@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
-const PASSWORD = process.env.ADMIN_PASSWORD ?? "donato2026";
+const PASSWORD = process.env.ADMIN_PASSWORD ?? "donation2026";
 const SLUG = "choco-2026-01";
 const exe = process.env.CHROMIUM_PATH ?? (fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
 

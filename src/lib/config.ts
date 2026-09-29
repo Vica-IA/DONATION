@@ -1,4 +1,4 @@
-export const APP_NAME = "DONATO";
+export const APP_NAME = "DONATION";
 export const APP_TAGLINE = "De la donación al impacto.";
 export const APP_DESCRIPTION =
   "Plataforma de gestión, trazabilidad e impacto para misiones y ayuda humanitaria.";

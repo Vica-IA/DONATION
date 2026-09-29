@@ -1,4 +1,4 @@
-# DONATO — guía para agentes
+# DONATION — guía para agentes
 
 Lee `AGENTS.md` (reglas de Next.js 16) y `docs/10.00_MVP_TECNICO.md` antes de tocar código.
 

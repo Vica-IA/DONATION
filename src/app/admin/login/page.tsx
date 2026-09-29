@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <LoginForm next={next ?? "/admin"} />
           {devHint ? (
             <p className="mt-4 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-              Modo desarrollo: no hay <code>ADMIN_PASSWORD</code> definida, usa <code>donato2026</code>.
+              Modo desarrollo: no hay <code>ADMIN_PASSWORD</code> definida, usa <code>donation2026</code>.
             </p>
           ) : null}
         </div>

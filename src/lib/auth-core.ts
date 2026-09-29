@@ -3,7 +3,7 @@
  * No importa nada de Node para poder usarse también desde proxy.ts.
  */
 
-export const SESSION_COOKIE = "donato_admin";
+export const SESSION_COOKIE = "donation_admin";
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 días
 
 const encoder = new TextEncoder();
@@ -33,14 +33,14 @@ export async function sessionSecret(): Promise<string | null> {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   const password = adminPassword();
   if (!password) return null;
-  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`donato-session:${password}`));
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`donation-session:${password}`));
   return toBase64Url(digest);
 }
 
 /** Contraseña del panel. En desarrollo hay una por defecto; en producción es obligatoria. */
 export function adminPassword(): string | null {
   if (process.env.ADMIN_PASSWORD) return process.env.ADMIN_PASSWORD;
-  if (process.env.NODE_ENV !== "production") return "donato2026";
+  if (process.env.NODE_ENV !== "production") return "donation2026";
   return null;
 }
 

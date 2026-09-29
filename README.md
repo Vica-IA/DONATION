@@ -1,4 +1,4 @@
-# DONATO — De la donación al impacto
+# DONATION — De la donación al impacto
 
 Plataforma de gestión, trazabilidad e impacto para misiones y ayuda humanitaria.
 Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Chocó 01 (9–12 de octubre de 2026): confirmar a los voluntarios de KAIROS Life y PALPITOS y tener su logística lista.
@@ -21,8 +21,8 @@ npm install
 npm run dev
 ```
 
-Abre <http://localhost:3000>. En desarrollo la base de datos es un archivo SQLite (`data/donato.db`) que se crea solo, con la misión y los grupos ya cargados.
-La contraseña del panel en desarrollo es `donato2026` (o la que pongas en `ADMIN_PASSWORD` dentro de `.env.local`).
+Abre <http://localhost:3000>. En desarrollo la base de datos es un archivo SQLite (`data/donation.db`) que se crea solo, con la misión y los grupos ya cargados.
+La contraseña del panel en desarrollo es `donation2026` (o la que pongas en `ADMIN_PASSWORD` dentro de `.env.local`).
 
 Otros comandos:
 
@@ -37,7 +37,7 @@ npm run db:studio   # explorador de la base de datos (Drizzle Studio)
 Prueba de extremo a extremo (usa Chromium vía Playwright):
 
 ```bash
-rm -f data/donato.db && ADMIN_PASSWORD=clave-prueba PORT=3100 npm start &
+rm -f data/donation.db && ADMIN_PASSWORD=clave-prueba PORT=3100 npm start &
 BASE_URL=http://localhost:3100 ADMIN_PASSWORD=clave-prueba npm run smoke
 ```
 
@@ -53,7 +53,7 @@ BASE_URL=http://localhost:3100 ADMIN_PASSWORD=clave-prueba npm run smoke
    | `AUTH_SECRET` | cadena aleatoria de 32+ caracteres (recomendada) |
    | `TURSO_DATABASE_URL` | `libsql://...turso.io` |
    | `TURSO_AUTH_TOKEN` | token de Turso |
-   | `NEXT_PUBLIC_SITE_URL` | URL pública, p. ej. `https://donato.vercel.app` (para el enlace que se comparte) |
+   | `NEXT_PUBLIC_SITE_URL` | URL pública, p. ej. `https://donation.vercel.app` (para el enlace que se comparte) |
 
 4. **Deploy.** Al primer arranque la app crea las tablas y carga la misión inicial. Entra a `/admin`, revisa fechas, cupos y punto de encuentro, y comparte el enlace del formulario.
 

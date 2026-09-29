@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 /**
- * Esquema del MVP de DONATO (SQLite / libSQL).
+ * Esquema del MVP de DONATION (SQLite / libSQL).
  * Los cambios estructurales se aplican con migraciones en ./migrations.ts.
  */
 

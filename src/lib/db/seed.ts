@@ -23,7 +23,7 @@ export async function seedIfEmpty(db: Db) {
       slug: "choco-2026-01",
       name: "Misión Chocó 01",
       description:
-        "Primera misión de campo de DONATO: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: KAIROS Life y PALPITOS.",
+        "Primera misión de campo de DONATION: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: KAIROS Life y PALPITOS.",
       location: "Chocó, Colombia (territorio por confirmar: Quibdó, Tadó, Ánimas o Puerto Meluk)",
       startDate: "2026-10-09",
       endDate: "2026-10-12",
