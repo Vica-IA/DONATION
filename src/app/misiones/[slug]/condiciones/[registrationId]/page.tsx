@@ -32,13 +32,13 @@ export default async function TermsPage({ params, searchParams }: Props) {
         <header className="mb-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">{mission.name}</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Condiciones de participación</h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-muted">
             {formatDateRange(mission.startDate, mission.endDate)} · Para: <span className="font-medium text-ink">{volunteer.fullName}</span>
           </p>
         </header>
 
         {!missionHasTerms(mission) ? (
-          <div className="card text-sm text-slate-600">Esta misión todavía no tiene condiciones de participación publicadas.</div>
+          <div className="card text-sm text-muted">Esta misión todavía no tiene condiciones de participación publicadas.</div>
         ) : acceptance ? (
           <>
             <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-brand-900" role="status">

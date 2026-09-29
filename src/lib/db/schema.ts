@@ -152,6 +152,11 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(), // siempre en minúsculas
   name: text("name").notNull(),
   role: text("role").notNull().default("consulta"), // USER_ROLES
+  /** Líder de grupo: organización que lidera. */
+  organizationId: text("organization_id").references(() => organizations.id),
+  /** Coordinador de área: área que coordina (catálogo AREAS). */
+  area: text("area"),
+  phone: text("phone"),
   passwordHash: text("password_hash").notNull(),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   mustChangePassword: integer("must_change_password", { mode: "boolean" }).notNull().default(false),
@@ -159,6 +164,28 @@ export const users = sqliteTable("users", {
   lastLoginAt: text("last_login_at"),
   ...timestamps,
 });
+
+/** Tareas de preparación y campo, por misión y área (alimentan Resumen, Áreas y Tablero). */
+export const tasks = sqliteTable(
+  "tasks",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    area: text("area").notNull().default("general"), // AREAS | 'general'
+    title: text("title").notNull(),
+    notes: text("notes"),
+    ownerUserId: text("owner_user_id").references(() => users.id),
+    dueDate: text("due_date"), // YYYY-MM-DD
+    status: text("status").notNull().default("pendiente"), // TASK_STATUS
+    isGoCriteria: integer("is_go_criteria", { mode: "boolean" }).notNull().default(false),
+    completedAt: text("completed_at"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("tasks_mission_idx").on(t.missionId, t.area), index("tasks_owner_idx").on(t.ownerUserId)],
+);
 
 /** Bitácora mínima de actividad (principio de trazabilidad). */
 export const activityLog = sqliteTable("activity_log", {
@@ -178,3 +205,4 @@ export type MissionRegistration = typeof missionRegistrations.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
+export type Task = typeof tasks.$inferSelect;

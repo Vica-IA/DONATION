@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { UserRole } from "./catalogs";
+import { isArea, type Area, type UserRole } from "./catalogs";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS, authSecret, createSessionToken, verifySessionToken } from "./auth-core";
 import { can, isUserRole, type Permission } from "./permissions";
 import { verifyPassword } from "./password";
@@ -13,6 +13,8 @@ export type SessionUser = {
   name: string;
   email: string;
   role: UserRole;
+  organizationId: string | null;
+  area: Area | null;
   mustChangePassword: boolean;
 };
 
@@ -26,7 +28,15 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   // Un cambio de contraseña invalida las sesiones anteriores.
   const changedAt = Math.floor(Date.parse(user.passwordChangedAt) / 1000);
   if (Number.isFinite(changedAt) && claims.iat < changedAt) return null;
-  return { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword };
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    organizationId: user.organizationId ?? null,
+    area: user.area && isArea(user.area) ? user.area : null,
+    mustChangePassword: user.mustChangePassword,
+  };
 });
 
 /**

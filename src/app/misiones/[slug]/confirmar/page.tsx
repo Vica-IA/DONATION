@@ -31,24 +31,24 @@ export default async function ConfirmPage({ params }: Props) {
         <header className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">{mission.code}</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{mission.name}</h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-2 text-muted">
             <span className="font-semibold text-ink">{dates}</span>
             {mission.location ? ` · ${mission.location}` : ""}
           </p>
-          {mission.description ? <p className="mt-3 text-sm text-slate-600">{mission.description}</p> : null}
+          {mission.description ? <p className="mt-3 text-sm text-muted">{mission.description}</p> : null}
           {mission.meetingPoint ? (
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-muted">
               <span className="font-medium text-ink">Punto de encuentro:</span> {mission.meetingPoint}
             </p>
           ) : null}
           {mission.contributionAmount ? (
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-muted">
               <span className="font-medium text-ink">Aporte por persona:</span> {formatCOP(mission.contributionAmount)} aprox. (contribución a los
               costos de la misión; el cupo se separa con el pago).
             </p>
           ) : null}
           {missionHasTerms(mission) ? (
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-muted">
               Después de enviar este formulario deberás leer y aceptar las <span className="font-medium text-ink">condiciones de participación</span>.
             </p>
           ) : null}
@@ -72,7 +72,7 @@ export default async function ConfirmPage({ params }: Props) {
         ) : (
           <div className="card text-center">
             <h2 className="section-title">Inscripciones cerradas</h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-muted">
               Esta misión ya no recibe confirmaciones. Si necesitas cambiar algo, contacta al equipo coordinador.
             </p>
           </div>

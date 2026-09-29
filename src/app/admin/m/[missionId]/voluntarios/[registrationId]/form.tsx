@@ -43,7 +43,7 @@ export function ParticipantForm({ registration, volunteer, organizations }: Prop
       <Field label="Notas internas del equipo" htmlFor="adminNotes" error={errors.adminNotes}>
         <textarea id="adminNotes" name="adminNotes" rows={3} className={cls("adminNotes")} defaultValue={registration.adminNotes ?? ""} />
       </Field>
-      <h3 className="pt-2 text-sm font-semibold text-slate-700">Aporte económico</h3>
+      <h3 className="pt-2 text-sm font-semibold text-ink-soft">Aporte económico</h3>
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Estado del aporte" htmlFor="paymentStatus" error={errors.paymentStatus} required>
           <select id="paymentStatus" name="paymentStatus" className={cls("paymentStatus")} defaultValue={registration.paymentStatus}>
@@ -61,7 +61,7 @@ export function ParticipantForm({ registration, volunteer, organizations }: Prop
           <input id="paymentNotes" name="paymentNotes" className={cls("paymentNotes")} defaultValue={registration.paymentNotes ?? ""} placeholder="Transferencia 29/09" />
         </Field>
       </div>
-      <h3 className="pt-2 text-sm font-semibold text-slate-700">Datos de contacto</h3>
+      <h3 className="pt-2 text-sm font-semibold text-ink-soft">Datos de contacto</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre completo" htmlFor="fullName" error={errors.fullName} required>
           <input id="fullName" name="fullName" className={cls("fullName")} defaultValue={volunteer.fullName} />

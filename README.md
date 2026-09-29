@@ -10,7 +10,8 @@ Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Chocó
 - **Panel del equipo** en `/admin`: conteos, desglose por grupo/rol/logística, lista con filtros, ficha por persona, historial, CSV para Excel y enlace para compartir por WhatsApp.
 - **Condiciones de participación**: tras confirmar, cada persona lee el consentimiento informado de la misión, marca las casillas, indica si autoriza el uso de su imagen y firma. Queda registro de fecha, versión y texto aceptado. El documento se edita por misión desde el panel.
 - **Aporte y requisitos de viaje**: seguimiento del aporte económico por persona, vacuna de fiebre amarilla, póliza de accidentes y contacto de emergencia completo.
-- **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña. Roles: administrador (todo), coordinador de misión (gestiona participantes, ve datos de salud, exporta) y solo consulta (lectura sin datos sensibles).
+- **Consola de coordinación**: centro de misión (fase, días a la salida, criterios Go / No-Go, avance por área, pendientes críticos), coordinación por áreas y tablero de tareas.
+- **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña. Roles: administrador (control total), líder de grupo (KAIROS, PALPITOS: gestiona su gente), coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional: gestiona las tareas de su área) y solo consulta.
 - **Varias misiones**: crea y edita misiones desde el panel.
 
 La documentación del proyecto está en [`docs/`](docs/), incluido el detalle técnico de esta iteración en [`docs/10.00_MVP_TECNICO.md`](docs/10.00_MVP_TECNICO.md).
@@ -66,9 +67,10 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
 
 | Rol | Puede |
 |---|---|
-| Administrador | Todo: misiones, participantes, exportación y usuarios. |
-| Coordinador de misión | Gestionar participantes (estado, rol, notas, contacto), ver salud y contacto de emergencia, exportar CSV. |
-| Solo consulta | Ver cupos, listas y fichas sin datos de salud ni contacto de emergencia. No exporta ni edita. |
+| Administrador | Control total: misiones, participantes, tareas, exportación y usuarios. |
+| Líder de grupo | Gestionar los participantes de su grupo (estado, rol, notas, contacto, aporte), ver sus datos de salud, exportar su lista, crear y cerrar tareas propias. |
+| Coordinador de área | Ver el equipo completo y gestionar las tareas de su área. Solo el de Logística ve datos de salud (primeros auxilios). |
+| Solo consulta | Ver cupos, listas, fichas y tareas sin datos de salud ni contacto de emergencia. No exporta ni edita. |
 
 La matriz de permisos vive en `src/lib/permissions.ts`. Las contraseñas se guardan con scrypt; cambiar la contraseña cierra las demás sesiones de esa cuenta.
 
@@ -80,14 +82,19 @@ src/app/                      rutas (App Router)
   misiones/[slug]/confirmar   formulario público + acción de servidor
   misiones/[slug]/gracias     confirmación de envío (enlaza al paso 2)
   misiones/[slug]/condiciones/[id]  lectura y aceptación de las condiciones de participación
-  admin/                      panel (login, dashboard, misiones, participantes, CSV, usuarios, mi cuenta)
+  admin/m/[missionId]/        consola de una misión: resumen, voluntarios, tareas, áreas, editar, CSV
+  admin/(shell)/              páginas globales del panel: misiones, usuarios, mi cuenta
+  admin/login                 acceso
 src/lib/
   catalogs.ts                 opciones del formulario (roles, habilidades, estados...)
   validation.ts               esquemas zod
   data.ts                     consultas y reglas (cupos, duplicados, bitácora)
   auth*.ts                    sesión del panel (cookie firmada + usuario en base de datos)
   users.ts, password.ts       usuarios del panel y contraseñas (scrypt)
-  permissions.ts              roles y permisos
+  permissions.ts              roles, alcances (grupo / área) y permisos
+  tasks.ts                    tareas por misión y área
+  mission-timeline.ts         fases y días a la salida de una misión
+src/components/admin-shell.tsx  barra lateral y encabezados del panel
   db/                         esquema Drizzle, migraciones SQL y semilla
   terms/                      texto inicial de las condiciones de participación (semilla)
 src/proxy.ts                  protege /admin antes de llegar a las páginas

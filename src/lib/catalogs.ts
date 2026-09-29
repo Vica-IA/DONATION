@@ -94,9 +94,52 @@ export const PAYMENT_STATUS = [
 
 export const USER_ROLES = [
   { value: "admin", label: "Administrador" },
-  { value: "coordinador", label: "Coordinador de misión" },
+  { value: "lider_grupo", label: "Líder de grupo" },
+  { value: "coordinador", label: "Coordinador de área" },
   { value: "consulta", label: "Solo consulta" },
 ] as const satisfies readonly Option[];
+
+/** Áreas de coordinación de una misión. El orden es el de la interfaz. */
+export const AREAS = [
+  { value: "logistica", label: "Logística", short: "Logística", initials: "LO", color: "#157a5e", description: "Alojamiento, herramientas, equipos de protección, comunicaciones, energía, botiquín y emergencias." },
+  { value: "transporte", label: "Transporte", short: "Transporte", initials: "TR", color: "#2f6fa3", description: "Movimiento de personas, mercados y materiales: Medellín → Chocó, traslados internos y fletes hasta la obra." },
+  { value: "alimentacion", label: "Alimentación", short: "Alimentación", initials: "AL", color: "#b8621b", description: "Menús, compras de víveres, cocina en campo, raciones diarias, agua potable y restricciones alimentarias del equipo." },
+  { value: "financiero", label: "Financiero", short: "Financiero", initials: "FI", color: "#c4830f", description: "Registro de donaciones, control presupuestal, compras con doble aprobación, gastos de campo y conciliación posterior." },
+  { value: "espiritual", label: "Acompañamiento espiritual", short: "Espiritual", initials: "ES", color: "#7a5ea8", description: "Vida espiritual del equipo y enlace con el sacerdote y la comunidad: oraciones, Eucaristía y bendición de la vivienda." },
+  { value: "emocional", label: "Acompañamiento emocional", short: "Emocional", initials: "EM", color: "#b4506f", description: "Acompañamiento psicológico a la familia y la comunidad, actividades con niños y cuidado emocional del equipo." },
+] as const;
+
+export type Area = (typeof AREAS)[number]["value"];
+export type AreaInfo = (typeof AREAS)[number];
+
+/** Área especial para tareas de dirección (sin coordinador de área). */
+export const GENERAL_AREA = { value: "general", label: "Dirección de misión", short: "Dirección", initials: "DI", color: "#10231d", description: "Decisiones generales: familia, vivienda, presupuesto, equipo y criterios Go / No-Go." } as const;
+
+export function areaInfo(value: string | null | undefined): AreaInfo | typeof GENERAL_AREA {
+  return AREAS.find((a) => a.value === value) ?? GENERAL_AREA;
+}
+
+export function isArea(value: string): value is Area {
+  return AREAS.some((a) => a.value === value);
+}
+
+/** Roles de voluntario (catálogo ROLES) que trabajan con cada área. */
+export const AREA_VOLUNTEER_ROLES: Record<Area, readonly string[]> = {
+  logistica: ["logistica", "salud"],
+  transporte: [],
+  alimentacion: ["alimentacion"],
+  financiero: [],
+  espiritual: ["acompanamiento"],
+  emocional: ["acompanamiento", "ninos"],
+};
+
+export const TASK_STATUS = [
+  { value: "pendiente", label: "Pendiente" },
+  { value: "en_curso", label: "En curso" },
+  { value: "hecha", label: "Hecha" },
+] as const satisfies readonly Option[];
+
+export type TaskStatus = (typeof TASK_STATUS)[number]["value"];
 
 export const MISSION_STATUS = [
   { value: "planificacion", label: "En planificación" },

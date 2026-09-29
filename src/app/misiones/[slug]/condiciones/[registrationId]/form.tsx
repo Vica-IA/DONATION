@@ -32,7 +32,7 @@ export function TermsForm({ slug, registrationId, declarations, askImageConsent,
 
       <section className="card space-y-3">
         <h2 className="section-title">Casillas de aceptación</h2>
-        <p className="text-sm text-slate-600">Marca cada una solo si la has leído y estás de acuerdo. Todas son necesarias.</p>
+        <p className="text-sm text-muted">Marca cada una solo si la has leído y estás de acuerdo. Todas son necesarias.</p>
         <div className="space-y-2">
           {declarations.map((text, i) => (
             <label key={i} className="choice">
@@ -47,7 +47,7 @@ export function TermsForm({ slug, registrationId, declarations, askImageConsent,
       {askImageConsent ? (
         <section className="card space-y-3">
           <h2 className="section-title">Autorización de uso de imagen</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             Autorizo a la organización a captar y utilizar mi imagen, voz y testimonio en fotografías, videos y publicaciones con fines de
             difusión, memoria institucional y sensibilización de la misión, sin contraprestación económica. La negativa no afecta mi participación.
           </p>
@@ -67,7 +67,7 @@ export function TermsForm({ slug, registrationId, declarations, askImageConsent,
 
       <section className="card space-y-4">
         <h2 className="section-title">Firma</h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           Documento registrado: <span className="font-medium text-ink">{docLabel}</span>. Para firmar, escribe tu nombre completo tal como lo
           registraste (<span className="font-medium text-ink">{fullName}</span>) y la ciudad desde la que aceptas.
         </p>
@@ -80,7 +80,7 @@ export function TermsForm({ slug, registrationId, declarations, askImageConsent,
         <button type="submit" className="btn-primary w-full py-3 text-base" disabled={pending}>
           {pending ? "Guardando…" : "Acepto las condiciones de participación"}
         </button>
-        <p className="text-xs text-slate-500">Se guardará la fecha y hora de tu aceptación, la versión del documento y los datos de firma.</p>
+        <p className="text-xs text-muted">Se guardará la fecha y hora de tu aceptación, la versión del documento y los datos de firma.</p>
       </section>
     </form>
   );

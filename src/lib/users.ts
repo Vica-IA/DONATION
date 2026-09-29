@@ -1,29 +1,40 @@
 import "server-only";
 import { and, asc, count, eq } from "drizzle-orm";
-import type { UserRole } from "./catalogs";
+import type { Area, UserRole } from "./catalogs";
 import { getDb } from "./db";
-import { users, type User } from "./db/schema";
+import { organizations, users, type User } from "./db/schema";
 import { nowIso } from "./format";
 import { hashPassword } from "./password";
 
-export type PublicUser = Omit<User, "passwordHash">;
+export type PublicUser = Omit<User, "passwordHash"> & { organizationName: string | null };
 
-function strip(user: User): PublicUser {
+function strip(user: User, organizationName: string | null = null): PublicUser {
   const { passwordHash: _omit, ...rest } = user;
   void _omit;
-  return rest;
+  return { ...rest, organizationName };
 }
 
 export async function listUsers(): Promise<PublicUser[]> {
   const db = await getDb();
-  const rows = await db.select().from(users).orderBy(asc(users.name));
-  return rows.map(strip);
+  const rows = await db
+    .select({ user: users, organizationName: organizations.name })
+    .from(users)
+    .leftJoin(organizations, eq(organizations.id, users.organizationId))
+    .orderBy(asc(users.name));
+  return rows.map((r) => strip(r.user, r.organizationName));
 }
 
 export async function getUserById(id: string): Promise<PublicUser | null> {
   const db = await getDb();
-  const row = (await db.select().from(users).where(eq(users.id, id)).limit(1))[0];
-  return row ? strip(row) : null;
+  const row = (
+    await db
+      .select({ user: users, organizationName: organizations.name })
+      .from(users)
+      .leftJoin(organizations, eq(organizations.id, users.organizationId))
+      .where(eq(users.id, id))
+      .limit(1)
+  )[0];
+  return row ? strip(row.user, row.organizationName) : null;
 }
 
 /** Incluye el hash: solo para verificar credenciales. */
@@ -48,13 +59,52 @@ export async function countActiveAdmins(): Promise<number> {
   return n;
 }
 
+/** Coordinadores activos, indexados por área. */
+export async function listCoordinators(): Promise<Map<Area, PublicUser>> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.role, "coordinador"), eq(users.active, true)))
+    .orderBy(asc(users.name));
+  const map = new Map<Area, PublicUser>();
+  for (const u of rows) if (u.area && !map.has(u.area as Area)) map.set(u.area as Area, strip(u));
+  return map;
+}
+
+/** Líderes de grupo activos, indexados por organización. */
+export async function listLeaders(): Promise<Map<string, PublicUser[]>> {
+  const db = await getDb();
+  const rows = await db
+    .select({ user: users, organizationName: organizations.name })
+    .from(users)
+    .leftJoin(organizations, eq(organizations.id, users.organizationId))
+    .where(and(eq(users.role, "lider_grupo"), eq(users.active, true)))
+    .orderBy(asc(users.name));
+  const map = new Map<string, PublicUser[]>();
+  for (const r of rows) {
+    if (!r.user.organizationId) continue;
+    const list = map.get(r.user.organizationId) ?? [];
+    list.push(strip(r.user, r.organizationName));
+    map.set(r.user.organizationId, list);
+  }
+  return map;
+}
+
+/** Usuarios activos que pueden ser responsables de tareas. */
+export async function listAssignableUsers(): Promise<PublicUser[]> {
+  return (await listUsers()).filter((u) => u.active && u.role !== "consulta");
+}
+
+type ScopeInput = { organizationId: string | null; area: Area | null; phone: string | null };
+
 export async function createUser(input: {
   name: string;
   email: string;
   role: UserRole;
   password: string;
   mustChangePassword: boolean;
-}): Promise<PublicUser> {
+} & ScopeInput): Promise<PublicUser> {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.insert(users).values({
@@ -62,6 +112,9 @@ export async function createUser(input: {
     name: input.name,
     email: input.email.trim().toLowerCase(),
     role: input.role,
+    organizationId: input.organizationId,
+    area: input.area,
+    phone: input.phone,
     passwordHash: await hashPassword(input.password),
     active: true,
     mustChangePassword: input.mustChangePassword,
@@ -69,11 +122,19 @@ export async function createUser(input: {
   return (await getUserById(id))!;
 }
 
-export async function updateUser(id: string, input: { name: string; role: UserRole; active: boolean }): Promise<void> {
+export async function updateUser(id: string, input: { name: string; role: UserRole; active: boolean } & ScopeInput): Promise<void> {
   const db = await getDb();
   await db
     .update(users)
-    .set({ name: input.name, role: input.role, active: input.active, updatedAt: nowIso() })
+    .set({
+      name: input.name,
+      role: input.role,
+      active: input.active,
+      organizationId: input.organizationId,
+      area: input.area,
+      phone: input.phone,
+      updatedAt: nowIso(),
+    })
     .where(eq(users.id, id));
 }
 

@@ -20,14 +20,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="card">
           <h1 className="text-lg font-semibold">Panel del equipo</h1>
-          <p className="mb-4 mt-1 text-sm text-slate-500">Entra con tu correo y contraseña.</p>
+          <p className="mb-4 mt-1 text-sm text-muted">Entra con tu correo y contraseña.</p>
           <LoginForm next={next ?? "/admin"} />
           {devHint ? (
             <p className="mt-4 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
               Modo desarrollo: <code>{DEV_ADMIN_EMAIL}</code> / <code>{DEV_ADMIN_PASSWORD}</code>
             </p>
           ) : null}
-          <p className="mt-4 text-xs text-slate-500">¿Olvidaste tu contraseña? Pide a un administrador que te asigne una temporal.</p>
+          <p className="mt-4 text-xs text-muted">¿Olvidaste tu contraseña? Pide a un administrador que te asigne una temporal.</p>
         </div>
       </div>
     </main>

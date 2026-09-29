@@ -33,6 +33,14 @@ export async function listMissions(): Promise<Mission[]> {
   return db.select().from(missions).orderBy(desc(missions.startDate));
 }
 
+/** Misión "activa" para el panel: la próxima con inscripciones abiertas, o la más reciente. */
+export async function getActiveMission(): Promise<Mission | null> {
+  const all = await listMissions();
+  if (all.length === 0) return null;
+  const open = all.filter((m) => m.registrationOpen).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  return open[0] ?? all[0];
+}
+
 export async function getMissionBySlug(slug: string): Promise<Mission | null> {
   const db = await getDb();
   const rows = await db.select().from(missions).where(eq(missions.slug, slug)).limit(1);
@@ -450,6 +458,13 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
   if ((current.registration.assignedRole ?? null) !== input.assignedRole) changes.push(`rol asignado: ${input.assignedRole ?? "—"}`);
   if (current.registration.paymentStatus !== input.paymentStatus) changes.push(`aporte ${current.registration.paymentStatus} → ${input.paymentStatus}`);
   await log("registration", id, "actualizada_por_admin", changes.join("; ") || "datos editados", actor);
+}
+
+/** Confirmados cuyo rol (asignado o preferido) pertenece al área. */
+export async function listVolunteersForArea(mission: Mission, roles: readonly string[]): Promise<RegistrationRow[]> {
+  if (roles.length === 0) return [];
+  const rows = await listRegistrations(mission, { status: "confirmado" });
+  return rows.filter((r) => roles.includes(r.registration.assignedRole ?? r.registration.preferredRole ?? ""));
 }
 
 // ---------- Condiciones de participación ----------

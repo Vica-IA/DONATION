@@ -18,20 +18,20 @@ export default async function HomePage() {
         <section className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">{APP_NAME}</p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Misiones y voluntariado</h1>
-          <p className="mx-auto mt-3 max-w-xl text-slate-600">{APP_DESCRIPTION}</p>
+          <p className="mx-auto mt-3 max-w-xl text-muted">{APP_DESCRIPTION}</p>
         </section>
 
         <section className="mt-10 space-y-4">
           <h2 className="section-title">Convocatorias abiertas</h2>
           {open.length === 0 ? (
-            <p className="card text-sm text-slate-500">Por ahora no hay convocatorias abiertas.</p>
+            <p className="card text-sm text-muted">Por ahora no hay convocatorias abiertas.</p>
           ) : (
             open.map((m) => (
               <article key={m.id} className="card flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">{m.code}</p>
+                  <p className="text-xs font-semibold text-muted">{m.code}</p>
                   <h3 className="text-xl font-bold">{m.name}</h3>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-muted">
                     {formatDateRange(m.startDate, m.endDate)}
                     {m.location ? ` · ${m.location}` : ""}
                   </p>
@@ -50,7 +50,7 @@ export default async function HomePage() {
             {closed.map((m) => (
               <article key={m.id} className="card py-4 text-sm">
                 <span className="font-semibold">{m.name}</span>
-                <span className="text-slate-500"> · {formatDateRange(m.startDate, m.endDate)} · inscripciones cerradas</span>
+                <span className="text-muted"> · {formatDateRange(m.startDate, m.endDate)} · inscripciones cerradas</span>
               </article>
             ))}
           </section>

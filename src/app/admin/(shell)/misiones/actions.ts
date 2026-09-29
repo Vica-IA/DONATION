@@ -10,7 +10,7 @@ import { flattenErrors, formToObject, missionSchema, type FieldErrors } from "@/
 export type MissionFormState = { errors: FieldErrors; values: Record<string, unknown> };
 
 export async function saveMission(id: string | null, _prev: MissionFormState, formData: FormData): Promise<MissionFormState> {
-  const user = await requirePermission("missions.manage", id ? `/admin/misiones/${id}/editar` : "/admin/misiones/nueva");
+  const user = await requirePermission("missions.manage", id ? `/admin/m/${id}/editar` : "/admin/misiones/nueva");
   const raw = formToObject(formData, [], ["registrationOpen", "termsImageConsent"]);
   const parsed = missionSchema.safeParse(raw);
   if (!parsed.success) return { errors: flattenErrors(parsed.error), values: raw };
@@ -29,7 +29,7 @@ export async function saveMission(id: string | null, _prev: MissionFormState, fo
     return { errors: { _form: friendly }, values: raw };
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
-  redirect(`/admin/misiones/${targetId}`);
+  redirect(`/admin/m/${targetId}`);
 }

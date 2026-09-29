@@ -141,4 +141,29 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS terms_acceptances_registration_idx ON terms_acceptances (registration_id, terms_version)`,
     ],
   },
+  {
+    id: "0004_roles_scope_and_tasks",
+    statements: [
+      `ALTER TABLE users ADD COLUMN organization_id TEXT REFERENCES organizations(id)`,
+      `ALTER TABLE users ADD COLUMN area TEXT`,
+      `ALTER TABLE users ADD COLUMN phone TEXT`,
+      `CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        area TEXT NOT NULL DEFAULT 'general',
+        title TEXT NOT NULL,
+        notes TEXT,
+        owner_user_id TEXT REFERENCES users(id),
+        due_date TEXT,
+        status TEXT NOT NULL DEFAULT 'pendiente',
+        is_go_criteria INTEGER NOT NULL DEFAULT 0,
+        completed_at TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS tasks_mission_idx ON tasks (mission_id, area)`,
+      `CREATE INDEX IF NOT EXISTS tasks_owner_idx ON tasks (owner_user_id)`,
+    ],
+  },
 ];

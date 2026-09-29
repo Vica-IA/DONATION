@@ -11,11 +11,24 @@
   --color-brand-800: #0f4d3d;
   --color-brand-900: #0c3d31;
   --color-accent-400: #f5b544;
-  --color-accent-500: #e59f1f;
+  --color-accent-500: #f0b23e;
   --color-accent-600: #c4830f;
   --color-ink: #10231d;
-  --color-paper: #f6f8f7;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-ink-soft: #34463f;
+  --color-muted: #5d6b65;
+  --color-faint: #8a958f;
+  --color-paper: #f5f4ef;
+  --color-paper-2: #faf9f5;
+  --color-sand: #ebe9e2;
+  --color-line: #e3e1d8;
+  --color-line-soft: #f0eee7;
+  --color-line-strong: #cfccc1;
+  --color-danger: #9b2c1f;
+  --color-danger-soft: #fbe4e1;
+  --color-warn: #7a4f06;
+  --color-warn-soft: #fcefd3;
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 html {
@@ -26,6 +39,7 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer components {
@@ -35,88 +49,111 @@ body {
   .container-wide {
     @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
   }
+  .mono {
+    @apply font-mono;
+  }
   .card {
-    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6;
+    @apply rounded-2xl border border-line bg-white p-5 sm:p-6;
+  }
+  .card-tight {
+    @apply rounded-2xl border border-line bg-white p-4;
   }
   .btn,
   .btn-primary,
   .btn-secondary,
   .btn-ghost,
-  .btn-accent {
+  .btn-accent,
+  .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
   }
   .btn-primary {
     @apply bg-brand-600 text-white hover:bg-brand-700;
   }
   .btn-secondary {
-    @apply border border-slate-300 bg-white text-slate-800 hover:bg-slate-50;
+    @apply border border-line-strong bg-white text-ink hover:bg-paper-2;
   }
   .btn-ghost {
     @apply text-brand-700 hover:bg-brand-50;
   }
   .btn-accent {
-    @apply bg-accent-500 text-ink hover:bg-accent-600;
+    @apply bg-accent-500 text-ink hover:bg-accent-400;
+  }
+  .btn-danger {
+    @apply text-danger hover:bg-danger-soft;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-800;
+    @apply mb-1 block text-[13px] font-semibold text-ink;
   }
   .help {
-    @apply mt-1 text-xs text-slate-500;
+    @apply mt-1 text-xs text-muted;
   }
   .error {
-    @apply mt-1 text-xs font-medium text-red-600;
+    @apply mt-1 text-xs font-semibold text-red-600;
   }
   .input {
-    @apply block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base text-ink shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 sm:text-sm;
+    @apply block w-full rounded-xl border border-line-strong bg-white px-3.5 py-2.5 text-[15px] text-ink placeholder:text-faint focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 sm:text-sm;
   }
   .input-error {
     @apply border-red-400 focus:border-red-500 focus:ring-red-200;
   }
   .choice {
-    @apply flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-sm transition hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50;
+    @apply flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-white p-3 text-sm transition hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50;
   }
   .badge,
   .badge-confirmado,
   .badge-lista_espera,
   .badge-pendiente,
-  .badge-cancelado {
+  .badge-cancelado,
+  .badge-hecha,
+  .badge-en_curso {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
-  .badge-confirmado {
+  .badge-confirmado,
+  .badge-hecha {
     @apply bg-brand-100 text-brand-800;
   }
-  .badge-lista_espera {
-    @apply bg-amber-100 text-amber-800;
+  .badge-lista_espera,
+  .badge-en_curso {
+    @apply bg-warn-soft text-warn;
   }
   .badge-pendiente {
-    @apply bg-slate-200 text-slate-700;
+    @apply bg-sand text-ink-soft;
   }
   .badge-cancelado {
-    @apply bg-red-100 text-red-700;
+    @apply bg-danger-soft text-danger;
   }
   .section-title {
-    @apply text-lg font-semibold text-ink;
+    @apply text-[17px] font-extrabold tracking-tight text-ink;
+  }
+  .kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-muted;
   }
   .kpi {
-    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+    @apply rounded-2xl border border-line bg-white p-4;
   }
   .kpi-value {
-    @apply mt-1 text-3xl font-bold tracking-tight text-ink;
+    @apply mt-1 text-3xl font-extrabold tracking-tight text-ink;
   }
   .kpi-label {
-    @apply text-xs font-medium uppercase tracking-wide text-slate-500;
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;
   }
   .table {
     @apply w-full text-left text-sm;
   }
   .table th {
-    @apply border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply border-b border-line bg-paper-2 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;
   }
   .table td {
-    @apply border-b border-slate-100 px-3 py-2.5 align-top;
+    @apply border-b border-line-soft px-3 py-2.5 align-top;
+  }
+  .check {
+    @apply flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] border-line-strong bg-white text-xs text-white transition;
+  }
+  .check-on {
+    @apply border-brand-600 bg-brand-600;
   }
   .prose-terms {
-    @apply text-[15px] leading-relaxed text-slate-800;
+    @apply text-[15px] leading-relaxed text-ink-soft;
   }
   .prose-terms h1 {
     @apply mb-3 mt-8 text-2xl font-extrabold tracking-tight text-ink first:mt-0;
@@ -141,16 +178,16 @@ body {
     @apply list-decimal;
   }
   .prose-terms blockquote {
-    @apply my-4 border-l-4 border-brand-300 bg-brand-50 px-4 py-2 text-slate-700;
+    @apply my-4 border-l-4 border-brand-300 bg-brand-50 px-4 py-2 text-ink-soft;
   }
   .prose-terms hr {
-    @apply my-6 border-slate-200;
+    @apply my-6 border-line;
   }
   .prose-terms strong {
     @apply font-semibold text-ink;
   }
   .prose-terms em {
-    @apply text-slate-600;
+    @apply text-muted;
   }
   .prose-terms a {
     @apply text-brand-700 underline;

@@ -24,6 +24,19 @@ export function formatDateRange(start: string, end: string): string {
   return `${SHORT_FMT.format(s)} – ${DATE_FMT.format(e)}`;
 }
 
+/** "2 oct" */
+export function formatShortDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return SHORT_FMT.format(new Date(`${iso}T00:00:00Z`)).replace(".", "");
+}
+
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : (parts[0]?.[1] ?? "");
+  return (first + last).toUpperCase();
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   return DATETIME_FMT.format(new Date(iso));

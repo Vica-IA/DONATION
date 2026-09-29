@@ -27,10 +27,13 @@ export async function createUserAction(_prev: UserFormState, formData: FormData)
       name: parsed.data.name,
       email: parsed.data.email,
       role: parsed.data.role,
+      organizationId: parsed.data.organizationId,
+      area: parsed.data.area,
+      phone: parsed.data.phone,
       password,
       mustChangePassword: true,
     });
-    await log("user", user.id, "creado", `${user.email} · rol ${user.role}`, actor.name);
+    await log("user", user.id, "creado", `${user.email} · rol ${user.role}${user.area ? ` · ${user.area}` : ""}${user.organizationName ? ` · ${user.organizationName}` : ""}`, actor.name);
   } catch (err) {
     if (!isUniqueViolation(err)) console.error("Error creando usuario", err);
     return {
@@ -63,6 +66,8 @@ export async function updateUserAction(id: string, _prev: UserFormState, formDat
   await updateUser(id, parsed.data);
   const changes: string[] = [];
   if (target.role !== parsed.data.role) changes.push(`rol ${target.role} → ${parsed.data.role}`);
+  if ((target.area ?? null) !== parsed.data.area) changes.push(`área: ${parsed.data.area ?? "—"}`);
+  if ((target.organizationId ?? null) !== parsed.data.organizationId) changes.push("grupo cambiado");
   if (target.active !== parsed.data.active) changes.push(parsed.data.active ? "activado" : "desactivado");
   if (target.name !== parsed.data.name) changes.push("nombre editado");
   await log("user", id, "actualizado", changes.join("; ") || "sin cambios", actor.name);

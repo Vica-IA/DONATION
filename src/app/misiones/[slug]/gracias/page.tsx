@@ -25,12 +25,12 @@ const COPY: Record<string, { title: string; body: string; tone: string }> = {
   pendiente: {
     title: "Registramos tu respuesta",
     body: "Sabemos que aún no estás seguro/a. Cuando lo tengas claro, vuelve a este formulario con tu mismo documento y confirma: tu registro se actualizará.",
-    tone: "bg-slate-50 border-slate-200 text-slate-800",
+    tone: "bg-paper-2 border-line text-ink",
   },
   cancelado: {
     title: "Gracias por avisarnos",
     body: "Registramos que no podrás asistir esta vez. Si cambian tus planes, puedes volver a este formulario y confirmar.",
-    tone: "bg-slate-50 border-slate-200 text-slate-800",
+    tone: "bg-paper-2 border-line text-ink",
   },
 };
 
@@ -62,7 +62,7 @@ export default async function ThanksPage({ params, searchParams }: Props) {
           <div className="card mt-6 border-brand-300">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">Paso 2 de 2</p>
             <h2 className="mt-1 text-xl font-bold">Lee y acepta las condiciones de participación</h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-muted">
               Es el consentimiento informado de la misión: requisitos, riesgos del territorio, reglas de seguridad y tratamiento de datos.
               Tu cupo queda completo cuando lo aceptas{mission.contributionAmount ? " y realizas el aporte" : ""}.
             </p>

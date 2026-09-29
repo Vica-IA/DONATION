@@ -80,10 +80,10 @@ export function MissionForm({ mission }: { mission: Mission | null }) {
           <span>Inscripciones abiertas (el formulario público acepta respuestas)</span>
         </label>
       </div>
-      <div className="space-y-4 border-t border-slate-200 pt-5">
+      <div className="space-y-4 border-t border-line pt-5">
         <div>
           <h2 className="section-title">Condiciones de participación</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             Documento que cada persona confirmada debe leer y aceptar (consentimiento informado). Se escribe en Markdown: <code>#</code> títulos,{" "}
             <code>**negrita**</code>, listas con <code>-</code>.
           </p>

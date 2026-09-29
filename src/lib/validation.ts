@@ -10,6 +10,8 @@ import {
   ROLES,
   SHIRT_SIZES,
   SKILLS,
+  AREAS,
+  TASK_STATUS,
   TRANSPORT,
   USER_ROLES,
   values,
@@ -164,19 +166,69 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Escribe tu contraseña").max(200),
 });
 
-export const userCreateSchema = z.object({
-  name: trimmed(120).min(2, "Nombre requerido"),
-  email,
+const scopeFields = {
+  phone: z
+    .union([phone, z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
   role: z.enum(values(USER_ROLES), { message: "Selecciona un rol" }),
-  // Vacío = se genera una contraseña temporal automáticamente.
-  password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
+  organizationId: z.string().trim().max(64).optional().default(""),
+  area: z.union([z.enum(values(AREAS)), z.literal("")]).optional().default(""),
+};
+
+/** Un líder necesita grupo; un coordinador necesita área. Los demás no llevan alcance. */
+function normalizeScope<T extends { role: string; organizationId: string; area: string }>(d: T) {
+  return {
+    ...d,
+    organizationId: d.role === "lider_grupo" ? d.organizationId || null : null,
+    area: d.role === "coordinador" && d.area ? (d.area as (typeof AREAS)[number]["value"]) : null,
+  };
+}
+const scopeRefine = [
+  (d: { role: string; organizationId: string | null }) => d.role !== "lider_grupo" || Boolean(d.organizationId),
+  { message: "Selecciona el grupo que lidera", path: ["organizationId"] as (string | number)[] },
+] as const;
+const areaRefine = [
+  (d: { role: string; area: string | null }) => d.role !== "coordinador" || Boolean(d.area),
+  { message: "Selecciona el área que coordina", path: ["area"] as (string | number)[] },
+] as const;
+
+export const userCreateSchema = z
+  .object({
+    name: trimmed(120).min(2, "Nombre requerido"),
+    email,
+    ...scopeFields,
+    // Vacío = se genera una contraseña temporal automáticamente.
+    password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
+  })
+  .transform(normalizeScope)
+  .refine(...scopeRefine)
+  .refine(...areaRefine);
+
+export const userUpdateSchema = z
+  .object({
+    name: trimmed(120).min(2, "Nombre requerido"),
+    ...scopeFields,
+    active: z.boolean().default(false),
+  })
+  .transform(normalizeScope)
+  .refine(...scopeRefine)
+  .refine(...areaRefine);
+
+export const taskSchema = z.object({
+  title: trimmed(160).min(3, "Escribe el nombre de la tarea"),
+  area: z.union([z.enum(values(AREAS)), z.literal("general")]),
+  ownerUserId: z.string().trim().max(64).optional().default(""),
+  dueDate: z
+    .union([isoDate, z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
+  status: z.enum(values(TASK_STATUS)).default("pendiente"),
+  isGoCriteria: z.boolean().default(false),
+  notes: optionalText(600),
 });
 
-export const userUpdateSchema = z.object({
-  name: trimmed(120).min(2, "Nombre requerido"),
-  role: z.enum(values(USER_ROLES), { message: "Selecciona un rol" }),
-  active: z.boolean().default(false),
-});
+export type TaskInput = z.infer<typeof taskSchema>;
 
 export const passwordResetSchema = z.object({
   password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
