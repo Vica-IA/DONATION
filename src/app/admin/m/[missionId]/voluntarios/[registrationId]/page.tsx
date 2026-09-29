@@ -50,7 +50,6 @@ export default async function ParticipantPage({ params }: { params: Promise<{ mi
     ["Rol asignado", labelOf(ROLES, r.assignedRole) || "—"],
     ["Habilidades", skills.length ? skills.map((s) => labelOf(SKILLS, s)).join(", ") : "—"],
     ["Experiencia en obra", v.constructionExperience ? "Sí" : "No"],
-    ["Talla camiseta", v.shirtSize ?? "—"],
     ["Aporte", `${labelOf(PAYMENT_STATUS, r.paymentStatus)}${r.paymentAmount ? ` · ${formatCOP(r.paymentAmount)}` : ""}${r.paymentNotes ? ` · ${r.paymentNotes}` : ""}`],
     ["Comentarios", r.comments ?? "—"],
     ["Registrado", formatDateTime(r.createdAt)],
@@ -106,7 +105,7 @@ export default async function ParticipantPage({ params }: { params: Promise<{ mi
                 <div className="mt-2 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
                   <p className="font-semibold">Aceptadas el {formatDateTime(termsAcceptance.acceptedAt)} (versión {termsAcceptance.termsVersion})</p>
                   <p className="mt-1">
-                    Firmó: {termsAcceptance.signedName} · {termsAcceptance.signedCity}
+                    Aceptó: {termsAcceptance.signedName}{termsAcceptance.signedCity ? ` · ${termsAcceptance.signedCity}` : ""}
                     {termsAcceptance.imageConsent === null ? "" : termsAcceptance.imageConsent ? " · Autoriza uso de imagen" : " · NO autoriza uso de imagen"}
                   </p>
                 </div>

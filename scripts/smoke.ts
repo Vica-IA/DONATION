@@ -37,6 +37,9 @@ async function main() {
   assert.ok(await page.getByText("Indica si confirmas tu participación").isVisible());
   assert.ok(await page.getByText("Escribe tu nombre completo").isVisible());
   assert.ok(await page.getByText("Elige tu grupo").isVisible());
+  assert.ok(await page.getByText("Debes aceptar las condiciones de participación").isVisible());
+  assert.match(await body(page), /CONSENTIMIENTO INFORMADO Y CONDICIONES DE PARTICIPACIÓN/);
+  assert.equal(await page.locator("#shirtSize").count(), 0);
   assert.equal(await page.locator("#refugio").count(), 0);
   // Grupo Kairós muestra el refugio y lo exige
   const kairosOpts = await page.$$eval("#organizationId option", (o) => o.map((x) => ({ v: (x as HTMLOptionElement).value, t: x.textContent })));
@@ -78,9 +81,8 @@ async function main() {
     await page.getByLabel("Carpintería").check();
     await page.getByLabel("Primeros auxilios").check();
     await page.getByLabel("Tengo experiencia en obra").check();
-    await page.selectOption("#shirtSize", "M");
     await page.fill("#comments", "Prueba automática");
-    await page.getByLabel(/Autorizo el tratamiento/).check();
+    await page.getByLabel(/He leído y acepto/).check();
     await page.getByRole("button", { name: "Enviar mi respuesta" }).click();
     await page.waitForURL(`**/misiones/${SLUG}/gracias**`);
     return new URL(page.url());
@@ -97,7 +99,7 @@ async function main() {
   await page.selectOption("#organizationId", kairosOpts.find((o) => o.t?.includes("Kairós"))!.v);
   await page.fill("#emergencyContactName", "Ana Pérez");
   await page.fill("#emergencyContactPhone", "3001112233");
-  await page.getByLabel(/Autorizo el tratamiento/).check();
+  await page.getByLabel(/He leído y acepto/).check();
   await page.getByRole("button", { name: "Enviar mi respuesta" }).click();
   await page.getByText("Indica tu refugio").waitFor();
   assert.match(page.url(), /\/confirmar$/);
@@ -109,33 +111,16 @@ async function main() {
   assert.ok(registrationId, "la página de gracias recibe el id de inscripción");
   console.log("✓ inscripción confirmada");
 
-  // Paso 2: condiciones
-  await page.getByRole("link", { name: "Leer y aceptar las condiciones" }).click();
-  await page.waitForURL(`**/misiones/${SLUG}/condiciones/${registrationId}`);
-  let termsBody = await body(page);
-  assert.match(termsBody, /CONSENTIMIENTO INFORMADO Y CONDICIONES DE PARTICIPACIÓN/);
-  assert.match(termsBody, /DECLARACIÓN FINAL DE ACEPTACIÓN/);
-  assert.equal(await page.locator('input[name="declarations"]').count(), 17, "17 casillas de aceptación");
-  await page.fill("#signedName", "Otro Nombre");
-  await page.fill("#signedCity", "Medellín");
-  await page.getByRole("button", { name: "Acepto las condiciones de participación" }).click();
-  await page.getByText(/Debes marcar todas las casillas/).waitFor();
-  assert.match(await body(page), /Indica si autorizas o no el uso de tu imagen/);
-  assert.match(await body(page), /Escribe tu nombre exactamente como lo registraste/);
-  for (let i = 0; i < 17; i++) await page.locator('input[name="declarations"]').nth(i).check();
-  await page.getByLabel("SÍ autorizo").check();
-  await page.fill("#signedName", "juan prueba uno");
-  await page.fill("#signedCity", "Medellín");
-  await page.getByRole("button", { name: "Acepto las condiciones de participación" }).click();
-  await page.waitForURL("**/condiciones/**?ok=1");
-  termsBody = await body(page);
-  assert.match(termsBody, /¡Gracias! Condiciones aceptadas/);
-  assert.match(termsBody, /Autorizaste el uso de tu imagen/);
+  // Condiciones aceptadas en el mismo formulario: evidencia y 404
+  assert.match(await body(page), /Ya aceptaste las condiciones de participación/);
+  assert.equal(await page.getByRole("link", { name: "Leer y aceptar las condiciones" }).count(), 0);
   await page.goto(`${BASE}/misiones/${SLUG}/condiciones/${registrationId}`);
-  assert.match(await body(page), /Ya aceptaste estas condiciones/);
+  let termsBody = await body(page);
+  assert.match(termsBody, /Ya aceptaste estas condiciones/);
+  assert.match(termsBody, /Autorizaste el uso de tu imagen/);
   const bad = await page.goto(`${BASE}/misiones/${SLUG}/condiciones/00000000-0000-0000-0000-000000000000`);
   assert.equal(bad?.status(), 404);
-  console.log("✓ condiciones de participación: validación, aceptación, evidencia y 404");
+  console.log("✓ condiciones aceptadas desde el formulario: evidencia y 404");
 
   url = await fill({ name: "María Prueba Dos", doc: "1000000002", attendance: "Todavía no estoy", phone: "3001000002", org: "Pálpitos" });
   assert.equal(url.searchParams.get("estado"), "pendiente");
@@ -301,7 +286,7 @@ async function main() {
   let detail = await body(page);
   assert.match(detail, /estado pendiente → confirmado/);
   assert.match(detail, /aporte pendiente → pagado/);
-  assert.match(detail, /Pendientes \(versión vigente 1\)/);
+  assert.match(detail, /Aceptadas el .* \(versión 1\)/);
   console.log("✓ gestión de participante (estado, rol, notas, aporte, historial)");
 
   await page.goto(`${base}/voluntarios/${registrationId}`);
@@ -309,12 +294,7 @@ async function main() {
   assert.match(detail, /Aceptadas el .* \(versión 1\)/);
   assert.match(detail, /Sura · póliza 12345/);
   await page.goto(`${base}/voluntarios`);
-  assert.match(await body(page), /condiciones 1\/2/);
-  await page.selectOption('select[name="requisito"]', "condiciones");
-  await page.getByRole("button", { name: "Filtrar" }).click();
-  await page.waitForURL("**requisito=condiciones**");
-  assert.match(await body(page), /María Prueba Dos/);
-  assert.doesNotMatch(await body(page), /Juan Prueba Uno/);
+  assert.match(await body(page), /condiciones 2\/2/);
   // Área Logística: equipo asignado (Juan y María tienen rol logística)
   await page.goto(`${base}/areas/logistica`);
   const areaBody = await body(page);
@@ -352,6 +332,28 @@ async function main() {
   await page.waitForURL(/\/admin\/m\/[^/?]+$/);
   await page.goto(`${base}/voluntarios/${registrationId}`);
   assert.match(await body(page), /Pendientes \(versión vigente 2\)/);
+  // Versión nueva: todos quedan pendientes; Juan vuelve a aceptar con una sola casilla
+  await page.goto(`${base}/voluntarios`);
+  assert.match(await body(page), /condiciones 0\/2/);
+  await page.selectOption('select[name="requisito"]', "condiciones");
+  await page.getByRole("button", { name: "Filtrar" }).click();
+  await page.waitForURL("**requisito=condiciones**");
+  assert.match(await body(page), /María Prueba Dos/);
+  assert.match(await body(page), /Juan Prueba Uno/);
+  await page.goto(`${BASE}/misiones/${SLUG}/condiciones/${registrationId}`);
+  termsBody = await body(page);
+  assert.match(termsBody, /CONSENTIMIENTO INFORMADO Y CONDICIONES DE PARTICIPACIÓN/);
+  assert.match(termsBody, /DECLARACIÓN FINAL DE ACEPTACIÓN/);
+  assert.equal(await page.locator('input[name="declarations"]').count(), 0);
+  await page.getByRole("button", { name: "Acepto las condiciones de participación" }).click();
+  await page.getByText(/Debes marcar la casilla/).waitFor();
+  await page.getByLabel(/He leído y acepto/).check();
+  await page.getByRole("button", { name: "Acepto las condiciones de participación" }).click();
+  await page.waitForURL("**/condiciones/**?ok=1");
+  assert.match(await body(page), /¡Gracias! Condiciones aceptadas/);
+  await page.goto(`${base}/voluntarios?requisito=condiciones`);
+  assert.match(await body(page), /María Prueba Dos/);
+  assert.doesNotMatch(await body(page), /Juan Prueba Uno/);
   url = await fill({ name: "Pedro Prueba Tres", doc: "1000000003", attendance: "Sí, confirmo", phone: "3001000003" });
   assert.equal(url.searchParams.get("estado"), "lista_espera");
   console.log("✓ versión de condiciones y lista de espera al agotar cupos");

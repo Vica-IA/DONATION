@@ -7,7 +7,6 @@ import {
   PAYMENT_STATUS,
   REGISTRATION_STATUS,
   ROLES,
-  SHIRT_SIZES,
   SKILLS,
   AREAS,
   FINANCE_CATEGORIES,
@@ -68,13 +67,12 @@ export const registrationSchema = z.object({
   accidentInsurance: optionalText(120),
   medicalNotes: optionalText(600),
   dietaryNotes: optionalText(300),
-  shirtSize: z.union([z.enum(values(SHIRT_SIZES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
   skills: z.array(z.enum(values(SKILLS))).max(SKILLS.length).default([]),
   constructionExperience: z.boolean().default(false),
   attendance: z.enum(values(ATTENDANCE), { message: "Indica si confirmas tu participación" }),
   preferredRole: z.union([z.enum(values(ROLES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
   comments: optionalText(800),
-  dataConsent: z.literal(true, { message: "Debes autorizar el tratamiento de tus datos" }),
+  termsAccepted: z.literal(true, { message: "Debes aceptar las condiciones de participación para enviar el formulario" }),
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -147,11 +145,9 @@ export const missionSchema = z
 
 export type MissionInput = z.infer<typeof missionSchema>;
 
+/** Aceptación por enlace personal (nueva versión del documento): una sola casilla. */
 export const termsAcceptanceSchema = z.object({
-  signedName: trimmed(120).min(3, "Escribe tu nombre completo tal como lo registraste"),
-  signedCity: trimmed(80).min(2, "Indica la ciudad desde la que aceptas"),
-  imageConsent: z.union([z.literal("si"), z.literal("no"), z.literal("")]).optional(),
-  declarations: z.array(z.string().max(500)).default([]),
+  accepted: z.literal(true, { message: "Debes marcar la casilla para aceptar las condiciones." }),
 });
 
 const email = z.string().trim().toLowerCase().email("Correo inválido").max(120);

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
 import { TermsDocument } from "@/components/terms-document";
-import { DOC_TYPES, labelOf } from "@/lib/catalogs";
 import { getTermsContext, missionHasTerms, termsDeclarationList } from "@/lib/data";
 import { formatDateRange, formatDateTime } from "@/lib/format";
 import { TermsForm } from "./form";
@@ -44,8 +43,8 @@ export default async function TermsPage({ params, searchParams }: Props) {
             <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-brand-900" role="status">
               <h2 className="text-xl font-bold">{ok ? "¡Gracias! Condiciones aceptadas" : "Ya aceptaste estas condiciones"}</h2>
               <p className="mt-2 text-sm">
-                Aceptadas el {formatDateTime(acceptance.acceptedAt)} (versión {acceptance.termsVersion}) por {acceptance.signedName}, desde{" "}
-                {acceptance.signedCity}.
+                Aceptadas el {formatDateTime(acceptance.acceptedAt)} (versión {acceptance.termsVersion}) por {acceptance.signedName}
+                {acceptance.signedCity ? `, desde ${acceptance.signedCity}` : ""}.
                 {acceptance.imageConsent === null ? "" : acceptance.imageConsent ? " Autorizaste el uso de tu imagen." : " No autorizaste el uso de tu imagen."}
               </p>
               <p className="mt-2 text-xs text-brand-800">Si el documento cambia de fondo, te pediremos aceptarlo de nuevo.</p>
@@ -65,7 +64,7 @@ export default async function TermsPage({ params, searchParams }: Props) {
         ) : (
           <>
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              Lee el documento completo. Al final encontrarás las casillas de aceptación y la firma.
+              Lee el documento completo. Al final, marca la casilla y acepta.
             </div>
             <article className="card mt-6">
               <TermsDocument markdown={mission.termsMarkdown!} />
@@ -77,7 +76,6 @@ export default async function TermsPage({ params, searchParams }: Props) {
                 declarations={declarations}
                 askImageConsent={mission.termsImageConsent}
                 fullName={volunteer.fullName}
-                docLabel={`${labelOf(DOC_TYPES, volunteer.docType)} ${volunteer.docNumber}`}
               />
             </div>
           </>

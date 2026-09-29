@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import { Field } from "@/components/ui";
 import {
   ATTENDANCE,
@@ -8,7 +8,6 @@ import {
   DOC_TYPES,
   KAIROS_SLUG,
   ROLES,
-  SHIRT_SIZES,
   SKILLS,
 } from "@/lib/catalogs";
 import type { Organization } from "@/lib/db/schema";
@@ -16,10 +15,14 @@ import { confirmParticipation, type ConfirmState } from "./actions";
 
 const initialConfirmState: ConfirmState = { errors: {}, values: {} };
 
+type Terms = { declarations: string[]; askImageConsent: boolean; document: ReactNode };
+
 type Props = {
   slug: string;
   organizations: Organization[];
   missionDates: string;
+  /** Condiciones de participación de la misión (null si la misión no las tiene). */
+  terms: Terms | null;
 };
 
 function str(values: Record<string, unknown>, key: string): string {
@@ -36,7 +39,7 @@ function bool(values: Record<string, unknown>, key: string): boolean {
   return values[key] === true;
 }
 
-export function ConfirmForm({ slug, organizations, missionDates }: Props) {
+export function ConfirmForm({ slug, organizations, missionDates, terms }: Props) {
   const action = confirmParticipation.bind(null, slug);
   const [state, formAction, pending] = useActionState<ConfirmState, FormData>(action, initialConfirmState);
   const { errors, values } = state;
@@ -222,16 +225,6 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
           <input type="checkbox" name="constructionExperience" defaultChecked={bool(values, "constructionExperience")} className="mt-0.5" />
           <span>Tengo experiencia en obra o construcción</span>
         </label>
-        <Field label="Talla de camiseta" htmlFor="shirtSize" error={errors.shirtSize}>
-          <select id="shirtSize" name="shirtSize" className={cls("shirtSize")} defaultValue={str(values, "shirtSize")}>
-            <option value="">Selecciona</option>
-            {SHIRT_SIZES.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
         <Field label="Comentarios o preguntas" htmlFor="comments" error={errors.comments}>
           <textarea id="comments" name="comments" rows={3} className={cls("comments")} defaultValue={str(values, "comments")} />
         </Field>
@@ -239,14 +232,41 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
 
       {/* 5. Consentimiento */}
       <section className="card space-y-4">
-        <label className={`choice ${errors.dataConsent ? "border-red-400" : ""}`}>
-          <input type="checkbox" name="dataConsent" defaultChecked={bool(values, "dataConsent")} className="mt-0.5" />
+        {terms ? (
+          <div className="space-y-3">
+            <h3 className="text-base font-bold">Condiciones de participación</h3>
+            <p className="text-sm text-muted">Lee el documento completo antes de aceptar. Es el consentimiento informado de la misión: requisitos, riesgos del territorio, reglas de seguridad y tratamiento de datos.</p>
+            <div className="max-h-96 overflow-y-auto rounded-xl border border-line bg-paper-2 p-4" tabIndex={0} aria-label="Condiciones de participación">
+              {terms.document}
+            </div>
+            {terms.declarations.length > 0 ? (
+              <details className="rounded-xl border border-line p-3 text-sm">
+                <summary className="cursor-pointer font-semibold">Al aceptar declaras estas {terms.declarations.length} cosas</summary>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
+                  {terms.declarations.map((d, i) => (
+                    <li key={i}>{d}</li>
+                  ))}
+                </ol>
+              </details>
+            ) : null}
+            {terms.askImageConsent ? (
+              <p className="text-xs text-muted">
+                Incluye la autorización para captar y usar tu imagen, voz y testimonio en fotografías, videos y publicaciones de la misión, con fines de difusión,
+                memoria institucional y sensibilización, sin contraprestación económica.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <label className={`choice ${errors.termsAccepted ? "border-red-400" : ""}`}>
+          <input type="checkbox" name="termsAccepted" defaultChecked={bool(values, "termsAccepted")} className="mt-0.5" />
           <span>
-            Autorizo el tratamiento de mis datos personales conforme a la Ley 1581 de 2012, únicamente para la organización,
-            logística y seguridad de la misión. <span className="text-red-500">*</span>
+            {terms
+              ? `He leído y acepto las condiciones de participación, incluidas las declaraciones${terms.askImageConsent ? " y la autorización de uso de imagen" : ""}, y autorizo el tratamiento de mis datos personales conforme a la Ley 1581 de 2012 para la organización, logística y seguridad de la misión.`
+              : "He leído y acepto el tratamiento de mis datos personales conforme a la Ley 1581 de 2012, únicamente para la organización, logística y seguridad de la misión."}{" "}
+            <span className="text-red-500">*</span>
           </span>
         </label>
-        {errors.dataConsent ? <p className="error">{errors.dataConsent}</p> : null}
+        {errors.termsAccepted ? <p className="error">{errors.termsAccepted}</p> : null}
         <button type="submit" className="btn-primary w-full py-3 text-base" disabled={pending}>
           {pending ? "Enviando…" : "Enviar mi respuesta"}
         </button>

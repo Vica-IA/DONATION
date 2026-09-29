@@ -25,15 +25,6 @@ export const BLOOD_TYPES = [
   { value: "NS", label: "No lo sé" },
 ] as const satisfies readonly Option[];
 
-export const SHIRT_SIZES = [
-  { value: "XS", label: "XS" },
-  { value: "S", label: "S" },
-  { value: "M", label: "M" },
-  { value: "L", label: "L" },
-  { value: "XL", label: "XL" },
-  { value: "XXL", label: "XXL" },
-] as const satisfies readonly Option[];
-
 export const ATTENDANCE = [
   { value: "confirmo", label: "Sí, confirmo mi participación" },
   { value: "no_seguro", label: "Todavía no estoy seguro/a" },
@@ -199,7 +190,6 @@ export const MISSION_STATUS = [
 
 export type DocType = (typeof DOC_TYPES)[number]["value"];
 export type BloodType = (typeof BLOOD_TYPES)[number]["value"];
-export type ShirtSize = (typeof SHIRT_SIZES)[number]["value"];
 export type Attendance = (typeof ATTENDANCE)[number]["value"];
 export type Role = (typeof ROLES)[number]["value"];
 export type Skill = (typeof SKILLS)[number]["value"];

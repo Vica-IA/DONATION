@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
 import { Progress } from "@/components/ui";
-import { getMissionBySlug, getMissionStats, listOrganizations, missionHasTerms } from "@/lib/data";
+import { TermsDocument } from "@/components/terms-document";
+import { getMissionBySlug, getMissionStats, listOrganizations, missionHasTerms, termsDeclarationList } from "@/lib/data";
 import { isEphemeralDb } from "@/lib/db";
 import { formatCOP, formatDateRange } from "@/lib/format";
 import { ConfirmForm } from "./form";
@@ -24,6 +25,9 @@ export default async function ConfirmPage({ params }: Props) {
 
   const [organizations, stats] = await Promise.all([listOrganizations(), getMissionStats(mission)]);
   const dates = formatDateRange(mission.startDate, mission.endDate);
+  const terms = missionHasTerms(mission)
+    ? { declarations: termsDeclarationList(mission), askImageConsent: mission.termsImageConsent, document: <TermsDocument markdown={mission.termsMarkdown!} /> }
+    : null;
 
   return (
     <>
@@ -50,7 +54,7 @@ export default async function ConfirmPage({ params }: Props) {
           ) : null}
           {missionHasTerms(mission) ? (
             <p className="mt-2 text-sm text-muted">
-              Después de enviar este formulario deberás leer y aceptar las <span className="font-medium text-ink">condiciones de participación</span>.
+              Al final del formulario están las <span className="font-medium text-ink">condiciones de participación</span>: para enviarlo debes leerlas y aceptarlas.
             </p>
           ) : null}
           <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50 p-4">
@@ -74,7 +78,7 @@ export default async function ConfirmPage({ params }: Props) {
             <p className="mt-2 text-sm text-muted">Las inscripciones se abrirán muy pronto. Vuelve a este enlace en unos días.</p>
           </div>
         ) : mission.registrationOpen ? (
-          <ConfirmForm slug={mission.slug} organizations={organizations} missionDates={dates} />
+          <ConfirmForm slug={mission.slug} organizations={organizations} missionDates={dates} terms={terms} />
         ) : (
           <div className="card text-center">
             <h2 className="section-title">Inscripciones cerradas</h2>

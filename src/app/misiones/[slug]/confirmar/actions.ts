@@ -1,8 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { KAIROS_SLUG } from "@/lib/catalogs";
-import { getMissionBySlug, listOrganizations, submitRegistration } from "@/lib/data";
+import { getMissionBySlug, getTermsContext, listOrganizations, missionHasTerms, recordTermsAcceptance, submitRegistration, termsDeclarationList } from "@/lib/data";
 import { isEphemeralDb } from "@/lib/db";
 import { flattenErrors, formToObject, registrationSchema, type FieldErrors } from "@/lib/validation";
 
@@ -30,7 +31,7 @@ export async function confirmParticipation(
     redirect(`/misiones/${slug}/gracias?estado=confirmado`);
   }
 
-  const raw = formToObject(formData, ["skills"], ["constructionExperience", "dataConsent"]);
+  const raw = formToObject(formData, ["skills"], ["constructionExperience", "termsAccepted"]);
   const parsed = registrationSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -57,6 +58,25 @@ export async function confirmParticipation(
       errors: { _form: "No pudimos guardar tu respuesta. Intenta de nuevo en un momento." },
       values: raw,
     };
+  }
+
+  // La aceptación de las condiciones va en el mismo envío: una vez por versión del documento.
+  if (missionHasTerms(mission)) {
+    try {
+      const ctx = await getTermsContext(slug, result.registrationId);
+      if (ctx && !ctx.acceptance) {
+        const userAgent = (await headers()).get("user-agent");
+        await recordTermsAcceptance(ctx, {
+          declarations: termsDeclarationList(mission),
+          imageConsent: mission.termsImageConsent ? true : null,
+          signedName: parsed.data.fullName,
+          signedCity: parsed.data.city ?? "",
+          userAgent: userAgent ? userAgent.slice(0, 300) : null,
+        });
+      }
+    } catch (err) {
+      console.error("Error registrando aceptación de condiciones", err);
+    }
   }
 
   const params = new URLSearchParams({

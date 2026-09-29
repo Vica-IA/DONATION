@@ -309,7 +309,6 @@ export async function submitRegistration(mission: Mission, input: RegistrationIn
     accidentInsurance: input.accidentInsurance ?? null,
     medicalNotes: input.medicalNotes ?? null,
     dietaryNotes: input.dietaryNotes ?? null,
-    shirtSize: input.shirtSize,
     skills: JSON.stringify(input.skills),
     constructionExperience: input.constructionExperience,
     dataConsent: true,
