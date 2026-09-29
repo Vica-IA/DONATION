@@ -6,7 +6,7 @@ import { AREAS, USER_ROLES, areaInfo, labelOf, type Area } from "@/lib/catalogs"
 import { APP_NAME } from "@/lib/config";
 import type { Mission } from "@/lib/db/schema";
 import { formatDateRange, initials } from "@/lib/format";
-import { isEphemeralDb } from "@/lib/db";
+import { dbMode, isEphemeralDb } from "@/lib/db";
 import { missionTimeline } from "@/lib/mission-timeline";
 import { can } from "@/lib/permissions";
 import type { PublicUser } from "@/lib/users";
@@ -29,6 +29,8 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
   const roleLabel = labelOf(USER_ROLES, user.role);
   const scope =
     user.role === "coordinador" && user.area ? areaInfo(user.area).short : user.role === "lider_grupo" && user.organizationId ? "grupo" : null;
+  const mode = dbMode();
+  const modeLabel = mode === "turso" ? "Base de datos: Turso" : mode === "ephemeral" ? "Base de datos: temporal" : "Base de datos: local";
 
   return (
     <div className="min-h-full lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -102,7 +104,12 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
             {can(user.role, "users.manage") ? <NavLink href="/admin/usuarios" label="Usuarios" /> : null}
             <NavLink href="/" label="Sitio público" match="exact" />
           </div>
-          <div className="mt-3 hidden items-center gap-2.5 rounded-xl bg-white/[.07] p-2.5 lg:flex">
+          {user.role === "admin" ? (
+            <div className="mt-3 px-2.5 text-[11px] text-[#7fa99a]" title="Origen de los datos de este despliegue">
+              {modeLabel}
+            </div>
+          ) : null}
+          <div className="mt-2 hidden items-center gap-2.5 rounded-xl bg-white/[.07] p-2.5 lg:flex">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[12px] font-bold text-brand-800">{initials(user.name)}</span>
             <Link href="/admin/cuenta" className="flex min-w-0 flex-1 flex-col" title={user.email}>
               <span className="truncate text-[13px] font-semibold text-white">{user.name}</span>
