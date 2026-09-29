@@ -25,7 +25,7 @@
 | 2026-09-29 | Usuarios del panel con contraseña propia y tres roles (administrador, coordinador, consulta). |
 | 2026-09-29 | Se incorpora el documento 09.01 y el flujo de aceptación de condiciones de participación; seguimiento del aporte económico; campos de vacuna, póliza y contacto de emergencia ampliado. |
 | 2026-09-29 | Nuevo diseño del panel según el prototipo "Misión Chocó · Coordinación": consola con barra lateral, centro de misión, coordinación por áreas y tablero de tareas. Roles con alcance: administrador, líder de grupo (KAIROS, Fundación Pálpitos) y coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional). |
-| 2026-09-29 | Producción en Vercel: proyecto `donaton` conectado a GitHub (cada push a la rama de trabajo despliega solo) con base de datos Turso; la autenticación de Vercel queda solo para previews para que el formulario sea público. El proyecto `donation` en modo demostración queda obsoleto. |
+| 2026-09-29 | Producción en Vercel: proyecto `donation` conectado a GitHub (cada push a la rama de trabajo despliega solo) con base de datos Turso, en <https://donation-psi-tawny.vercel.app>; la autenticación de Vercel queda solo para previews para que el formulario sea público. |
 
 ## Puntos por resolver entre documentos
 
