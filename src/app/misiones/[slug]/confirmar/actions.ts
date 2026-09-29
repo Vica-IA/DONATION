@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getMissionBySlug, submitRegistration } from "@/lib/data";
+import { isEphemeralDb } from "@/lib/db";
 import { flattenErrors, formToObject, registrationSchema, type FieldErrors } from "@/lib/validation";
 
 export type ConfirmState = {
@@ -19,8 +20,8 @@ export async function confirmParticipation(
   if (!mission) {
     return { errors: { _form: "La misión no existe." }, values: {} };
   }
-  if (!mission.registrationOpen) {
-    return { errors: { _form: "Las inscripciones de esta misión están cerradas." }, values: {} };
+  if (!mission.registrationOpen || isEphemeralDb()) {
+    return { errors: { _form: "Las inscripciones de esta misión no están abiertas todavía." }, values: {} };
   }
 
   // Trampa para bots: un humano nunca ve ni llena este campo.

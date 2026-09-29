@@ -7,6 +7,16 @@ import { ensureBootstrapAdmin, seedIfEmpty, seedTasksIfEmpty } from "./seed";
 export type Db = LibSQLDatabase<typeof schema>;
 
 const LOCAL_URL = "file:./data/donation.db";
+const EPHEMERAL_URL = "file:/tmp/donation.db";
+
+/**
+ * Modo demostración: en Vercel sin Turso, con ALLOW_EPHEMERAL_DB=true se usa
+ * un SQLite en /tmp que NO persiste entre despliegues ni instancias. Sirve
+ * para revisar el sitio antes de conectar la base definitiva.
+ */
+export function isEphemeralDb(): boolean {
+  return Boolean(process.env.VERCEL) && !process.env.TURSO_DATABASE_URL && !process.env.DATABASE_URL && process.env.ALLOW_EPHEMERAL_DB === "true";
+}
 
 type Cache = { client?: Client; db?: Db; ready?: Promise<Db> };
 const g = globalThis as unknown as { __donationDb?: Cache };
@@ -15,6 +25,10 @@ const cache: Cache = (g.__donationDb ??= {});
 function resolveUrl(): { url: string; authToken?: string } {
   const url = process.env.TURSO_DATABASE_URL ?? process.env.DATABASE_URL;
   if (url) return { url, authToken: process.env.TURSO_AUTH_TOKEN };
+  if (isEphemeralDb()) {
+    console.warn("DONATION: base de datos temporal en /tmp (modo demostración). Conecta Turso para conservar los datos.");
+    return { url: EPHEMERAL_URL };
+  }
   if (process.env.VERCEL) {
     throw new Error(
       "DONATION: falta TURSO_DATABASE_URL (y TURSO_AUTH_TOKEN). En Vercel el sistema de archivos no persiste, " +

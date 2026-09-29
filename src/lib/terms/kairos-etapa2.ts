@@ -333,9 +333,9 @@ Declaro haber leído íntegramente estas condiciones, haber tenido oportunidad d
 
 # DECLARACIÓN FINAL DE ACEPTACIÓN
 
-Declaro que participo libre y voluntariamente en la misión; conozco y acepto sus riesgos ordinarios e inherentes; asumo la responsabilidad correspondiente por mis decisiones, actos y omisiones personales; me comprometo a cumplir las instrucciones, protocolos y medidas de seguridad establecidos; y acepto que Kairós Group y la Parroquia Santa María de los Ángeles no serán responsables por hechos que legalmente no les sean imputables, incluyendo aquellos derivados exclusivamente de mi conducta, de terceros independientes, de actividades no autorizadas, de caso fortuito, fuerza mayor o circunstancias ajenas a su control.
+Declaro que participo libre y voluntariamente en la misión; conozco y acepto sus riesgos ordinarios e inherentes; asumo la responsabilidad correspondiente por mis decisiones, actos y omisiones personales; me comprometo a cumplir las instrucciones, protocolos y medidas de seguridad establecidos; y acepto que Grupo Kairós y la Parroquia Santa María de los Ángeles no serán responsables por hechos que legalmente no les sean imputables, incluyendo aquellos derivados exclusivamente de mi conducta, de terceros independientes, de actividades no autorizadas, de caso fortuito, fuerza mayor o circunstancias ajenas a su control.
 
-Reconozco igualmente que ninguna disposición del presente documento pretende eliminar responsabilidades que la legislación colombiana considere irrenunciables o que sean directamente imputables a Kairós Group o a la Parroquia Santa María de los Ángeles.
+Reconozco igualmente que ninguna disposición del presente documento pretende eliminar responsabilidades que la legislación colombiana considere irrenunciables o que sean directamente imputables a Grupo Kairós o a la Parroquia Santa María de los Ángeles.
 
 ---
 

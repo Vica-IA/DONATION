@@ -52,7 +52,7 @@ async function main() {
     await page.fill("#phone", p.phone);
     await page.fill("#email", `${p.doc}@ejemplo.com`);
     const orgOptions = await page.$$eval("#organizationId option", (o) => o.map((x) => ({ v: (x as HTMLOptionElement).value, t: x.textContent })));
-    const org = orgOptions.find((o) => o.t?.includes(p.org ?? "KAIROS"));
+    const org = orgOptions.find((o) => o.t?.includes(p.org ?? "Kairós"));
     assert.ok(org, "el grupo debe existir en el select");
     await page.selectOption("#organizationId", org!.v);
     await page.fill("#eps", "Sura");
@@ -110,10 +110,10 @@ async function main() {
   assert.equal(bad?.status(), 404);
   console.log("✓ condiciones de participación: validación, aceptación, evidencia y 404");
 
-  url = await fill({ name: "María Prueba Dos", doc: "1000000002", attendance: "Todavía no estoy", phone: "3001000002", org: "PALPITOS" });
+  url = await fill({ name: "María Prueba Dos", doc: "1000000002", attendance: "Todavía no estoy", phone: "3001000002", org: "Pálpitos" });
   assert.equal(url.searchParams.get("estado"), "pendiente");
   const mariaRegistrationId = url.searchParams.get("r")!;
-  console.log("✓ inscripción pendiente (PALPITOS)");
+  console.log("✓ inscripción pendiente (Fundación Pálpitos)");
 
   url = await fill({ name: "Juan Prueba Uno", doc: "1.000.000.001", attendance: "Sí, confirmo", phone: "3001000009" });
   assert.equal(url.searchParams.get("actualizado"), "1");
@@ -153,8 +153,8 @@ async function main() {
   let dash = await body(page);
   assert.match(dash, /Centro de misión/);
   assert.match(dash, /Misión Chocó 01/);
-  assert.match(dash, /KAIROS Life 1\/1/);
-  assert.match(dash, /PALPITOS 0\/1/);
+  assert.match(dash, /Grupo Kairós 1\/1/);
+  assert.match(dash, /Fundación Pálpitos 0\/1/);
   assert.match(dash, /Administrador/);
   assert.match(dash, /criterios Go listos/);
   assert.match(dash, /0\/16/);
@@ -290,7 +290,7 @@ async function main() {
   await page.fill("#email", "lider@prueba.local");
   await page.selectOption("#role", "lider_grupo");
   const orgOpts = await page.$$eval("#organizationId option", (o) => o.map((x) => ({ v: (x as HTMLOptionElement).value, t: x.textContent })));
-  await page.selectOption("#organizationId", orgOpts.find((o) => o.t?.includes("KAIROS"))!.v);
+  await page.selectOption("#organizationId", orgOpts.find((o) => o.t?.includes("Kairós"))!.v);
   await page.fill("#password", "lider-2026-kairos");
   await page.getByRole("button", { name: "Crear usuario" }).click();
   await page.getByText("Credenciales temporales").waitFor();
@@ -307,7 +307,7 @@ async function main() {
   assert.match(usersBody, /Carolina Coordinadora/);
   assert.match(usersBody, /Logística/);
   assert.match(usersBody, /Lía Líder/);
-  assert.match(usersBody, /KAIROS Life/);
+  assert.match(usersBody, /Grupo Kairós/);
   assert.match(usersBody, /\(tú\)/);
   // El coordinador aparece en la barra lateral y en el área
   await page.goto(`${base}/areas/logistica`);
@@ -351,7 +351,7 @@ async function main() {
   await page.getByText("Correo o contraseña incorrectos.").waitFor();
   console.log("✓ coordinador: cambio obligatorio de contraseña, tareas de su área, salud visible, sin gestión");
 
-  // ---------- Líder de grupo (KAIROS) ----------
+  // ---------- Líder de grupo (Grupo Kairós) ----------
   await loginAs("lider@prueba.local", "lider-2026-kairos");
   await changePassword("lider-2026-kairos", "lider-nueva-2026");
   b = await body(page);

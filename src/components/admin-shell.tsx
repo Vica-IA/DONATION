@@ -6,6 +6,7 @@ import { AREAS, USER_ROLES, areaInfo, labelOf, type Area } from "@/lib/catalogs"
 import { APP_NAME } from "@/lib/config";
 import type { Mission } from "@/lib/db/schema";
 import { formatDateRange, initials } from "@/lib/format";
+import { isEphemeralDb } from "@/lib/db";
 import { missionTimeline } from "@/lib/mission-timeline";
 import { can } from "@/lib/permissions";
 import type { PublicUser } from "@/lib/users";
@@ -119,7 +120,15 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
         </nav>
       </aside>
 
-      <main className="flex min-w-0 flex-col">{children}</main>
+      <main className="flex min-w-0 flex-col">
+        {isEphemeralDb() ? (
+          <div className="border-b border-amber-300 bg-warn-soft px-5 py-2 text-[13px] font-semibold text-warn lg:px-8" role="alert">
+            Modo demostración: la base de datos es temporal y se reinicia sola. Conecta Turso en Vercel (Storage) para conservar los datos y abrir las
+            inscripciones.
+          </div>
+        ) : null}
+        {children}
+      </main>
     </div>
   );
 }

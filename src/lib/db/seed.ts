@@ -14,8 +14,8 @@ export async function seedIfEmpty(db: Db) {
   const [{ value: orgCount }] = await db.select({ value: count() }).from(organizations);
   if (orgCount === 0) {
     await db.insert(organizations).values([
-      { id: crypto.randomUUID(), slug: "kairos-life", name: "KAIROS Life" },
-      { id: crypto.randomUUID(), slug: "palpitos", name: "PALPITOS" },
+      { id: crypto.randomUUID(), slug: "grupo-kairos", name: "Grupo Kairós" },
+      { id: crypto.randomUUID(), slug: "fundacion-palpitos", name: "Fundación Pálpitos" },
     ]);
   }
 
@@ -27,7 +27,7 @@ export async function seedIfEmpty(db: Db) {
       slug: "choco-2026-01",
       name: "Misión Chocó 01",
       description:
-        "Primera misión de campo de DONATION: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: KAIROS Life y PALPITOS.",
+        "Primera misión de campo de DONATION: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: Grupo Kairós y Fundación Pálpitos.",
       location: "Chocó, Colombia (Tadó, Istmina y comunidades cercanas a Puerto Meluk; por confirmar)",
       startDate: "2026-10-09",
       endDate: "2026-10-12",
@@ -42,6 +42,10 @@ export async function seedIfEmpty(db: Db) {
       termsImageConsent: true,
     });
   }
+
+  // Bases creadas con los nombres provisionales de los grupos: aplicar los nombres oficiales.
+  await db.update(organizations).set({ name: "Grupo Kairós", slug: "grupo-kairos" }).where(eq(organizations.slug, "kairos-life"));
+  await db.update(organizations).set({ name: "Fundación Pálpitos", slug: "fundacion-palpitos" }).where(eq(organizations.slug, "palpitos"));
 
   // Bases creadas antes de existir las condiciones: cargar el documento inicial una sola vez.
   const seeded = (await db.select().from(missions).where(eq(missions.code, SEED_MISSION_CODE)).limit(1))[0];

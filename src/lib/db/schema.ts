@@ -11,7 +11,7 @@ const timestamps = {
   updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
 };
 
-/** Grupos misioneros / organizaciones aliadas (KAIROS Life, PALPITOS, ...). */
+/** Grupos misioneros / organizaciones aliadas (Grupo Kairós, Fundación Pálpitos, ...). */
 export const organizations = sqliteTable("organizations", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull().unique(),

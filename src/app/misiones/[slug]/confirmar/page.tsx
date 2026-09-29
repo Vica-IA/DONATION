@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
 import { Progress } from "@/components/ui";
 import { getMissionBySlug, getMissionStats, listOrganizations, missionHasTerms } from "@/lib/data";
+import { isEphemeralDb } from "@/lib/db";
 import { formatCOP, formatDateRange } from "@/lib/format";
 import { ConfirmForm } from "./form";
 
@@ -67,7 +68,12 @@ export default async function ConfirmPage({ params }: Props) {
           </div>
         </header>
 
-        {mission.registrationOpen ? (
+        {isEphemeralDb() ? (
+          <div className="card text-center">
+            <h2 className="section-title">Plataforma en configuración</h2>
+            <p className="mt-2 text-sm text-muted">Las inscripciones se abrirán muy pronto. Vuelve a este enlace en unos días.</p>
+          </div>
+        ) : mission.registrationOpen ? (
           <ConfirmForm slug={mission.slug} organizations={organizations} missionDates={dates} />
         ) : (
           <div className="card text-center">

@@ -24,13 +24,13 @@
 | 2026-09-29 | Nombre del proyecto corregido a DONATION. |
 | 2026-09-29 | Usuarios del panel con contraseña propia y tres roles (administrador, coordinador, consulta). |
 | 2026-09-29 | Se incorpora el documento 09.01 y el flujo de aceptación de condiciones de participación; seguimiento del aporte económico; campos de vacuna, póliza y contacto de emergencia ampliado. |
-| 2026-09-29 | Nuevo diseño del panel según el prototipo "Misión Chocó · Coordinación": consola con barra lateral, centro de misión, coordinación por áreas y tablero de tareas. Roles con alcance: administrador, líder de grupo (KAIROS, PALPITOS) y coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional). |
+| 2026-09-29 | Nuevo diseño del panel según el prototipo "Misión Chocó · Coordinación": consola con barra lateral, centro de misión, coordinación por áreas y tablero de tareas. Roles con alcance: administrador, líder de grupo (KAIROS, Fundación Pálpitos) y coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional). |
 
 ## Puntos por resolver entre documentos
 
 Diferencias detectadas entre los documentos que conviene cerrar antes de la misión (la plataforma no las decide; se ajustan desde el panel):
 
-1. **Nombre de los grupos.** 00.00 y 00.01 hablan de *KAIROS Life* y *PALPITOS*; 09.01 habla de *Grupo Kairós — Parroquia Santa María de los Ángeles* y *Fundación Pálpitos*; la declaración final habla de *Kairós Group*. La plataforma tiene cargados "KAIROS Life" y "PALPITOS" como grupos.
+1. **Nombre de los grupos.** Resuelto el 2026-09-29: los nombres oficiales son *Grupo Kairós* y *Fundación Pálpitos*. La plataforma y los documentos usan esos nombres.
 2. **Territorios.** 08.00 menciona Quibdó, Tadó, Ánimas y Puerto Meluk; 09.01 menciona Tadó, Istmina y comunidades cercanas a Puerto Meluk. La misión cargada usa la lista de 09.01 como "por confirmar".
 3. **Tamaño del equipo.** 00.00 y 08.00 estiman 10 voluntarios; la convocatoria actual es de 40 cupos.
 4. **Cupo y pago.** 09.01 (cláusula 30) establece que el cupo se separa únicamente con el pago del aporte (~$400.000 COP). La plataforma confirma el cupo al inscribirse y deja el aporte como requisito que el equipo marca a mano; si se prefiere, el estado puede cambiarse a "pendiente" hasta recibir el pago.

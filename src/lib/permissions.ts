@@ -6,7 +6,7 @@ import type { Area, UserRole } from "./catalogs";
  *
  * Roles:
  * - admin: control total.
- * - lider_grupo: lidera un grupo (KAIROS, PALPITOS…): gestiona y exporta a su
+ * - lider_grupo: lidera un grupo (KAIROS, Fundación Pálpitos…): gestiona y exporta a su
  *   gente, ve sus datos de salud, y puede crear y cerrar tareas propias.
  * - coordinador: coordina un área (Logística, Espiritual, Emocional,
  *   Financiero, Transporte, Alimentación): ve el equipo completo, gestiona las
