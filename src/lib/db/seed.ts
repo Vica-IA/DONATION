@@ -63,23 +63,29 @@ export async function seedIfEmpty(db: Db) {
 }
 
 /**
- * Crea el primer administrador si no existe ningún usuario.
+ * Garantiza la cuenta de administrador configurada en el entorno.
  * - Producción: toma ADMIN_EMAIL y ADMIN_PASSWORD del entorno.
  * - Desarrollo: si no están definidos, usa las credenciales de desarrollo.
+ * Si ya existe un usuario con ese correo no se toca (ni su contraseña ni su
+ * rol). Si no existe, se crea como administrador aunque haya otros usuarios,
+ * para que cambiar ADMIN_EMAIL en el entorno siempre dé acceso.
  */
 export async function ensureBootstrapAdmin(db: Db) {
-  const [{ value: userCount }] = await db.select({ value: count() }).from(users);
-  if (userCount > 0) return;
-
   const isProd = process.env.NODE_ENV === "production";
   const email = (process.env.ADMIN_EMAIL ?? (isProd ? "" : DEV_ADMIN_EMAIL)).trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD ?? (isProd ? "" : DEV_ADMIN_PASSWORD);
   if (!email || !password) {
-    console.warn(
-      "DONATION: no hay usuarios del panel. Define ADMIN_EMAIL y ADMIN_PASSWORD en el entorno para crear el primer administrador.",
-    );
+    const [{ value: userCount }] = await db.select({ value: count() }).from(users);
+    if (userCount === 0) {
+      console.warn(
+        "DONATION: no hay usuarios del panel. Define ADMIN_EMAIL y ADMIN_PASSWORD en el entorno para crear el primer administrador.",
+      );
+    }
     return;
   }
+
+  const existing = (await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1))[0];
+  if (existing) return;
 
   await db.insert(users).values({
     id: crypto.randomUUID(),
@@ -88,10 +94,10 @@ export async function ensureBootstrapAdmin(db: Db) {
     role: "admin",
     passwordHash: await hashPassword(password),
     active: true,
-    // Las credenciales de desarrollo son públicas: no obligan a cambiarlas.
+    // Las credenciales vienen del entorno (o son las de desarrollo): no obligan a cambiarlas.
     mustChangePassword: false,
   });
-  console.info(`DONATION: administrador inicial creado (${email}).`);
+  console.info(`DONATION: administrador creado desde el entorno (${email}).`);
 }
 
 /**
