@@ -28,7 +28,9 @@ async function main() {
   await page.goto(`${BASE}/`);
   await page.getByRole("link", { name: "Confirmar participación" }).first().click();
   await page.waitForURL(`**/misiones/${SLUG}/confirmar`);
-  assert.match(await body(page), /0 de 40 cupos confirmados/);
+  assert.doesNotMatch(await body(page), /cupos confirmados/); // los cupos solo se ven en el panel
+  assert.equal(await page.locator('img[alt^="Kairós Life"]').count(), 1, "portada de Kairós en el formulario");
+  assert.ok((await page.locator('img[alt="Grupo Kairós"]').count()) >= 1, "logo de Kairós en el registro");
   assert.match(await body(page), /Aporte por persona:\s*\$\s?400\.000/);
   console.log("✓ landing → formulario");
 

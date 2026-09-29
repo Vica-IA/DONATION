@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
+import { MissionLogo } from "@/components/mission-brand";
 import { getMissionBySlug, getTermsContext, missionHasTerms } from "@/lib/data";
 import { formatDateRange } from "@/lib/format";
 
@@ -49,6 +50,7 @@ export default async function ThanksPage({ params, searchParams }: Props) {
       <PublicHeader />
       <main className="container-narrow flex flex-1 flex-col justify-center py-12">
         <div className={`rounded-2xl border p-6 sm:p-8 ${copy.tone}`}>
+          <MissionLogo mission={mission} className="mb-3 h-7" />
           <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">{mission.name}</p>
           <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">
             {nombre ? `${nombre}: ` : ""}

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
-import { Progress } from "@/components/ui";
+import { MissionCover, MissionLogo } from "@/components/mission-brand";
 import { TermsDocument } from "@/components/terms-document";
-import { getMissionBySlug, getMissionStats, listOrganizations, missionHasTerms, termsDeclarationList } from "@/lib/data";
+import { getMissionBySlug, listOrganizations, missionHasTerms, termsDeclarationList } from "@/lib/data";
 import { isEphemeralDb } from "@/lib/db";
 import { formatCOP, formatDateRange } from "@/lib/format";
 import { ConfirmForm } from "./form";
@@ -23,7 +23,7 @@ export default async function ConfirmPage({ params }: Props) {
   const mission = await getMissionBySlug(slug);
   if (!mission) notFound();
 
-  const [organizations, stats] = await Promise.all([listOrganizations(), getMissionStats(mission)]);
+  const organizations = await listOrganizations();
   const dates = formatDateRange(mission.startDate, mission.endDate);
   const terms = missionHasTerms(mission)
     ? { declarations: termsDeclarationList(mission), askImageConsent: mission.termsImageConsent, document: <TermsDocument markdown={mission.termsMarkdown!} /> }
@@ -32,9 +32,13 @@ export default async function ConfirmPage({ params }: Props) {
   return (
     <>
       <PublicHeader />
-      <main className="container-narrow flex-1 py-8 sm:py-12">
-        <header className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">{mission.code}</p>
+      <main className="container-narrow flex-1 py-6 sm:py-10">
+        <MissionCover mission={mission} />
+        <header className="mb-8 mt-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <MissionLogo mission={mission} className="h-8" />
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">{mission.code}</p>
+          </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{mission.name}</h1>
           <p className="mt-2 text-muted">
             <span className="font-semibold text-ink">{dates}</span>
@@ -57,19 +61,6 @@ export default async function ConfirmPage({ params }: Props) {
               Al final del formulario están las <span className="font-medium text-ink">condiciones de participación</span>: para enviarlo debes leerlas y aceptarlas.
             </p>
           ) : null}
-          <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-brand-800">
-                {stats.byStatus.confirmado} de {mission.capacity} cupos confirmados
-              </span>
-              <span className="text-brand-700">
-                {stats.available > 0 ? `${stats.available} disponibles` : "Cupos completos · lista de espera"}
-              </span>
-            </div>
-            <div className="mt-2">
-              <Progress value={stats.byStatus.confirmado} max={mission.capacity} />
-            </div>
-          </div>
         </header>
 
         {isEphemeralDb() ? (
