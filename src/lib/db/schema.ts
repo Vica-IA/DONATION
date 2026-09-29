@@ -165,6 +165,13 @@ export const users = sqliteTable("users", {
   ...timestamps,
 });
 
+/** Ajustes internos de la aplicación (clave → valor), p. ej. marcas de rescate ya aplicadas. */
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+});
+
 /** Enlaces de un solo uso para crear una nueva contraseña (generados por un administrador). */
 export const passwordResets = sqliteTable(
   "password_resets",

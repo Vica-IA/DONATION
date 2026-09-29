@@ -27,6 +27,7 @@ const ACTION_LABELS: Record<string, string> = {
   actualizada_por_admin: "actualizada por el equipo",
   contrasena_restablecida: "contraseña restablecida",
   enlace_restablecimiento: "enlace de nueva contraseña generado",
+  rescate_admin: "acceso de administrador restablecido (rescate)",
   contrasena_cambiada: "contraseña cambiada",
   condiciones_aceptadas: "condiciones aceptadas",
   estado: "cambio de estado",

@@ -68,10 +68,21 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
    | `TURSO_DATABASE_URL` | `libsql://...turso.io` |
    | `TURSO_AUTH_TOKEN` | token de Turso |
    | `NEXT_PUBLIC_SITE_URL` | URL pública, p. ej. `https://donation.vercel.app` (para el enlace que se comparte) |
+   | `ADMIN_PASSWORD_RESET` | solo para rescate: un texto nunca usado antes (p. ej. `2026-10-01-a`); ver abajo |
 
    Mientras no exista la base en Turso, puedes definir `ALLOW_EPHEMERAL_DB=true` para revisar el sitio con una base temporal (se reinicia sola y el formulario público queda cerrado). Quítala al conectar Turso.
 
 4. **Deploy.** Al primer arranque la app crea las tablas, carga la misión inicial y el primer administrador. Entra a `/admin`, crea las cuentas del equipo en "Usuarios" (cada una recibe una contraseña temporal que debe cambiar al entrar; si alguien la olvida, genera desde su ficha un enlace para crear una nueva), revisa fechas, cupos y punto de encuentro, y comparte el enlace del formulario.
+
+### Rescate del único administrador
+
+Si la única cuenta de administrador pierde su contraseña, nadie puede generarle un enlace desde el panel. El rescate se hace desde Vercel:
+
+1. En Settings → Environment Variables, pon en `ADMIN_PASSWORD` una contraseña temporal nueva y en `ADMIN_PASSWORD_RESET` un texto que no hayas usado antes (por ejemplo la fecha, `2026-10-01-a`).
+2. Redespliega (Deployments → ⋯ → Redeploy): los cambios de variables solo aplican en un despliegue nuevo.
+3. Entra con el correo de `ADMIN_EMAIL` y esa contraseña temporal. El panel obliga a cambiarla.
+
+Cada valor de `ADMIN_PASSWORD_RESET` se aplica una sola vez (queda anotado en la base), así que la variable puede quedarse: no se repite en cada arranque ni cierra sesiones. La cuenta vuelve a ser administrador activo aunque la hubieran degradado o desactivado. El rescate queda en la bitácora de actividad.
 
 ## Roles del panel
 

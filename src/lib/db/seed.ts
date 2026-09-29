@@ -1,6 +1,7 @@
 import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { missions, organizations, tasks, users } from "./schema";
+import { activityLog, appSettings, missions, organizations, tasks, users } from "./schema";
+import { nowIso } from "../format";
 import { DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, hashPassword } from "../password";
 import { KAIROS_ETAPA2_DECLARATIONS, KAIROS_ETAPA2_TERMS_MARKDOWN, KAIROS_ETAPA2_TERMS_VERSION } from "../terms/kairos-etapa2";
 
@@ -93,6 +94,8 @@ export async function ensureBootstrapAdmin(db: Db) {
     return;
   }
 
+  if (await applyAdminRescue(db, email, password)) return;
+
   const existing = (await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1))[0];
   if (existing) return;
 
@@ -107,6 +110,59 @@ export async function ensureBootstrapAdmin(db: Db) {
     mustChangePassword: false,
   });
   console.info(`DONATION: administrador creado desde el entorno (${email}).`);
+}
+
+const RESCUE_SETTING = "admin_password_reset";
+
+/**
+ * Rescate del administrador por variable de entorno. Si ADMIN_PASSWORD_RESET
+ * trae un valor que no se ha aplicado antes, la cuenta de ADMIN_EMAIL vuelve a
+ * ser administrador activo con la contraseña de ADMIN_PASSWORD, marcada como
+ * temporal (hay que cambiarla al entrar). Cada valor se aplica una sola vez y
+ * queda anotado en app_settings, así que la variable puede quedarse sin que
+ * cada arranque (o cada instancia en Vercel) vuelva a restablecerla.
+ */
+async function applyAdminRescue(db: Db, email: string, password: string): Promise<boolean> {
+  const marker = (process.env.ADMIN_PASSWORD_RESET ?? "").trim();
+  if (!marker) return false;
+  const applied = (await db.select().from(appSettings).where(eq(appSettings.key, RESCUE_SETTING)).limit(1))[0];
+  if (applied?.value === marker) return false;
+
+  const now = nowIso();
+  const passwordHash = await hashPassword(password);
+  const existing = (await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1))[0];
+  let userId = existing?.id;
+  if (userId) {
+    await db
+      .update(users)
+      .set({ passwordHash, role: "admin", active: true, mustChangePassword: true, passwordChangedAt: now, updatedAt: now })
+      .where(eq(users.id, userId));
+  } else {
+    userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email,
+      name: process.env.ADMIN_NAME ?? "Administrador",
+      role: "admin",
+      passwordHash,
+      active: true,
+      mustChangePassword: true,
+    });
+  }
+  await db
+    .insert(appSettings)
+    .values({ key: RESCUE_SETTING, value: marker, updatedAt: now })
+    .onConflictDoUpdate({ target: appSettings.key, set: { value: marker, updatedAt: now } });
+  await db.insert(activityLog).values({
+    id: crypto.randomUUID(),
+    entityType: "user",
+    entityId: userId,
+    action: "rescate_admin",
+    detail: `ADMIN_PASSWORD_RESET=${marker}: acceso de administrador restablecido con contraseña temporal`,
+    actor: "sistema",
+  });
+  console.warn(`DONATION: rescate del administrador aplicado (${email}). Entra con ADMIN_PASSWORD y cámbiala.`);
+  return true;
 }
 
 /**
