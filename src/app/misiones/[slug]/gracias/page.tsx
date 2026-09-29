@@ -59,6 +59,13 @@ export default async function ThanksPage({ params, searchParams }: Props) {
           <p className="mt-3 text-sm sm:text-base">{copy.body}</p>
           {actualizado ? <p className="mt-2 text-xs opacity-70">Ya tenías un registro para esta misión: lo actualizamos con tu nueva respuesta.</p> : null}
           <p className="mt-4 text-sm font-medium">Fechas: {formatDateRange(mission.startDate, mission.endDate)}</p>
+          {mission.departureNote || mission.returnNote ? (
+            <p className="mt-1 text-sm">
+              {mission.departureNote ? `Salida: ${mission.departureNote}` : ""}
+              {mission.departureNote && mission.returnNote ? " · " : ""}
+              {mission.returnNote ? `Llegada: ${mission.returnNote}` : ""}
+            </p>
+          ) : null}
         </div>
         {termsPending ? (
           <div className="card mt-6 border-brand-300">

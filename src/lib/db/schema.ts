@@ -34,6 +34,9 @@ export const missions = sqliteTable("missions", {
   status: text("status").notNull().default("convocatoria"),
   registrationOpen: integer("registration_open", { mode: "boolean" }).notNull().default(true),
   meetingPoint: text("meeting_point"),
+  /** Día y hora de salida y de llegada, en texto libre (p. ej. "Viernes 9 de octubre, 6:00 p. m."). */
+  departureNote: text("departure_note"),
+  returnNote: text("return_note"),
   contactName: text("contact_name"),
   contactPhone: text("contact_phone"),
   /** Aporte económico por persona en COP (informativo; cláusula 30). */

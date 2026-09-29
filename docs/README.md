@@ -35,6 +35,7 @@
 | 2026-09-29 | Se retira la talla de camiseta. Las condiciones de participación se leen y aceptan dentro del formulario con una única casilla (antes: paso 2 con 17 casillas, imagen y firma); la aceptación por enlace personal usa la misma casilla única. |
 | 2026-09-29 | El administrador puede borrar una inscripción desde la ficha (con confirmación): se borran su aceptación de condiciones y, si la persona no tiene otras inscripciones, sus datos personales; queda en la bitácora. |
 | 2026-09-29 | El formulario público muestra la portada de Kairós Life (Misión Reconocimiento, etapa 2) y el logo de Grupo Kairós; los cupos confirmados dejan de verse en público y quedan solo en el panel. |
+| 2026-09-29 | La misión tiene salida y llegada (día y hora) editables desde el panel y visibles en el formulario; se retira la descripción provisional de la primera misión. |
 
 ## Puntos por resolver entre documentos
 

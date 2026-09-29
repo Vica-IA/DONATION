@@ -55,6 +55,14 @@ export function MissionForm({ mission }: { mission: Mission | null }) {
         <input id="meetingPoint" name="meetingPoint" className={cls("meetingPoint")} defaultValue={v("meetingPoint")} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Salida (día y hora)" htmlFor="departureNote" error={errors.departureNote} help="Se muestra en el formulario.">
+          <input id="departureNote" name="departureNote" className={cls("departureNote")} defaultValue={v("departureNote")} placeholder="Viernes 9 de octubre, 6:00 p. m." />
+        </Field>
+        <Field label="Llegada (día y hora)" htmlFor="returnNote" error={errors.returnNote}>
+          <input id="returnNote" name="returnNote" className={cls("returnNote")} defaultValue={v("returnNote")} placeholder="Lunes 12 de octubre, 11:00 p. m." />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Contacto de coordinación" htmlFor="contactName" error={errors.contactName}>
           <input id="contactName" name="contactName" className={cls("contactName")} defaultValue={v("contactName")} />
         </Field>

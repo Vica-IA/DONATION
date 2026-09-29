@@ -220,4 +220,14 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
     id: "0008_volunteer_refugio",
     statements: [`ALTER TABLE volunteers ADD COLUMN refugio TEXT`],
   },
+  {
+    id: "0009_mission_schedule",
+    statements: [
+      `ALTER TABLE missions ADD COLUMN departure_note TEXT`,
+      `ALTER TABLE missions ADD COLUMN return_note TEXT`,
+      // Misión inicial: retirar la descripción provisional y cargar salida y llegada (una sola vez).
+      `UPDATE missions SET description = NULL WHERE code = 'CHO-2026-01' AND description LIKE 'Primera misión de campo de DONATION%'`,
+      `UPDATE missions SET departure_note = 'Viernes 9 de octubre, 6:00 p. m.', return_note = 'Lunes 12 de octubre, 11:00 p. m.' WHERE code = 'CHO-2026-01' AND departure_note IS NULL AND return_note IS NULL`,
+    ],
+  },
 ];

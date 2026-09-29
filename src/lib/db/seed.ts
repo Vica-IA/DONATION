@@ -30,8 +30,9 @@ export async function seedIfEmpty(db: Db) {
       code: SEED_MISSION_CODE,
       slug: "choco-2026-01",
       name: SEED_MISSION_NAME,
-      description:
-        "Primera misión de campo de DONATION: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: Grupo Kairós y Fundación Pálpitos.",
+      description: null,
+      departureNote: "Viernes 9 de octubre, 6:00 p. m.",
+      returnNote: "Lunes 12 de octubre, 11:00 p. m.",
       location: "Chocó, Colombia (Tadó, Istmina y comunidades cercanas a Puerto Meluk; por confirmar)",
       startDate: "2026-10-09",
       endDate: "2026-10-12",

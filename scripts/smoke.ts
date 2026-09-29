@@ -29,6 +29,8 @@ async function main() {
   await page.getByRole("link", { name: "Confirmar participación" }).first().click();
   await page.waitForURL(`**/misiones/${SLUG}/confirmar`);
   assert.doesNotMatch(await body(page), /cupos confirmados/); // los cupos solo se ven en el panel
+  assert.match(await body(page), /Salida:\s*Viernes 9 de octubre, 6:00 p\. m\. · Llegada:\s*Lunes 12 de octubre, 11:00 p\. m\./);
+  assert.doesNotMatch(await body(page), /Primera misión de campo/);
   assert.equal(await page.locator('img[alt^="Kairós Life"]').count(), 1, "portada de Kairós en el formulario");
   assert.ok((await page.locator('img[alt="Grupo Kairós"]').count()) >= 1, "logo de Kairós en el registro");
   assert.match(await body(page), /Aporte por persona:\s*\$\s?400\.000/);

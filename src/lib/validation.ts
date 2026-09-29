@@ -113,6 +113,8 @@ export const missionSchema = z
     status: z.enum(values(MISSION_STATUS)),
     registrationOpen: z.boolean().default(false),
     meetingPoint: optionalText(200),
+    departureNote: optionalText(120),
+    returnNote: optionalText(120),
     contactName: optionalText(120),
     contactPhone: optionalText(30),
     contributionAmount: z

@@ -44,6 +44,21 @@ export default async function ConfirmPage({ params }: Props) {
             <span className="font-semibold text-ink">{dates}</span>
             {mission.location ? ` · ${mission.location}` : ""}
           </p>
+          {mission.departureNote || mission.returnNote ? (
+            <p className="mt-2 text-sm text-muted">
+              {mission.departureNote ? (
+                <>
+                  <span className="font-medium text-ink">Salida:</span> {mission.departureNote}
+                </>
+              ) : null}
+              {mission.departureNote && mission.returnNote ? " · " : ""}
+              {mission.returnNote ? (
+                <>
+                  <span className="font-medium text-ink">Llegada:</span> {mission.returnNote}
+                </>
+              ) : null}
+            </p>
+          ) : null}
           {mission.description ? <p className="mt-3 text-sm text-muted">{mission.description}</p> : null}
           {mission.meetingPoint ? (
             <p className="mt-2 text-sm text-muted">
