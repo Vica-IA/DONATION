@@ -187,6 +187,31 @@ export const tasks = sqliteTable(
   (t) => [index("tasks_mission_idx").on(t.missionId, t.area), index("tasks_owner_idx").on(t.ownerUserId)],
 );
 
+/** Movimientos financieros de una misión: presupuesto (proyectado), compromisos y ejecución. */
+export const financeEntries = sqliteTable(
+  "finance_entries",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    kind: text("kind").notNull(), // FINANCE_KINDS
+    status: text("status").notNull().default("proyectado"), // FINANCE_STATUS
+    category: text("category").notNull(), // FINANCE_CATEGORIES
+    area: text("area"), // AREAS | 'general' | null
+    concept: text("concept").notNull(),
+    amount: integer("amount").notNull(), // COP, sin decimales
+    entryDate: text("entry_date"), // YYYY-MM-DD (fecha real o prevista)
+    counterparty: text("counterparty"), // proveedor, donante, entidad
+    reference: text("reference"), // factura, recibo, comprobante
+    ownerUserId: text("owner_user_id").references(() => users.id),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("finance_mission_idx").on(t.missionId, t.kind, t.status), index("finance_category_idx").on(t.missionId, t.category)],
+);
+
 /** Bitácora mínima de actividad (principio de trazabilidad). */
 export const activityLog = sqliteTable("activity_log", {
   id: text("id").primaryKey(),
@@ -203,6 +228,7 @@ export type Mission = typeof missions.$inferSelect;
 export type Volunteer = typeof volunteers.$inferSelect;
 export type MissionRegistration = typeof missionRegistrations.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
+export type FinanceEntry = typeof financeEntries.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type Task = typeof tasks.$inferSelect;

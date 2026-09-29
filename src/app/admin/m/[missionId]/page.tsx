@@ -7,16 +7,17 @@ import { requireUser } from "@/lib/auth";
 import { AREAS, areaInfo } from "@/lib/catalogs";
 import { siteUrl } from "@/lib/config";
 import { getMissionById, getMissionStats, missionHasTerms, recentActivity } from "@/lib/data";
-import { formatDateRange, formatDateTime, formatShortDate, initials, percent } from "@/lib/format";
+import { contributionSummary, listEntries, summarizeFinance } from "@/lib/finance";
+import { formatCOP, formatDateRange, formatDateTime, formatShortDate, initials, percent } from "@/lib/format";
 import { missionTimeline } from "@/lib/mission-timeline";
-import { can, canEditTask, canExport } from "@/lib/permissions";
+import { can, canEditTask, canExport, canViewFinance } from "@/lib/permissions";
 import { criticalPending, goCriteria, listTasks, summarizeAreas, taskProgress } from "@/lib/tasks";
 import { listCoordinators } from "@/lib/users";
 import { AreaDot, DueLabel, TaskCheck, defaultOwner } from "./tareas/task-bits";
 
 export const metadata = { title: "Centro de misión" };
 
-const ENTITY_LABELS: Record<string, string> = { mission: "Misión", registration: "Inscripción", volunteer: "Persona", user: "Usuario", task: "Tarea" };
+const ENTITY_LABELS: Record<string, string> = { mission: "Misión", registration: "Inscripción", volunteer: "Persona", user: "Usuario", task: "Tarea", finance: "Movimiento" };
 const ACTION_LABELS: Record<string, string> = {
   creada: "creada",
   creado: "creado",
@@ -29,6 +30,8 @@ const ACTION_LABELS: Record<string, string> = {
   condiciones_aceptadas: "condiciones aceptadas",
   estado: "cambio de estado",
   eliminada: "eliminada",
+  registrado: "registrado",
+  eliminado: "eliminado",
 };
 
 type Props = { params: Promise<{ missionId: string }>; searchParams: Promise<{ denegado?: string; cuenta?: string }> };
@@ -39,7 +42,16 @@ export default async function MissionOverview({ params, searchParams }: Props) {
   const user = await requireUser(`/admin/m/${missionId}`);
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
-  const [stats, tasks, coordinators, activity] = await Promise.all([getMissionStats(mission), listTasks(mission.id), listCoordinators(), recentActivity(8)]);
+  const financeAllowed = canViewFinance(user);
+  const [stats, tasks, coordinators, activity, entries, aportes] = await Promise.all([
+    getMissionStats(mission),
+    listTasks(mission.id),
+    listCoordinators(),
+    recentActivity(8),
+    financeAllowed ? listEntries(mission.id) : Promise.resolve([]),
+    financeAllowed ? contributionSummary(mission) : Promise.resolve(null),
+  ]);
+  const finance = financeAllowed && aportes ? { count: entries.length, summary: summarizeFinance(entries, aportes) } : null;
   const timeline = missionTimeline(mission);
   const areas = summarizeAreas(tasks, timeline.today);
   const go = goCriteria(tasks);
@@ -158,6 +170,32 @@ export default async function MissionOverview({ params, searchParams }: Props) {
             </p>
           ) : null}
         </section>
+
+        {/* Finanzas */}
+        {finance ? (
+          <section className="card-tight flex flex-col gap-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="section-title">Finanzas</span>
+                <span className="ml-2 text-sm text-muted">
+                  {finance.count} movimientos · presupuesto {formatCOP(finance.summary.gastos.proyectado)}
+                </span>
+              </div>
+              <Link href={`${base}/finanzas`} className="btn-secondary">
+                Ver finanzas
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Kpi label="Gastos ejecutados" value={formatCOP(finance.summary.gastos.ejecutado)} />
+              <Kpi label="Disponible" value={formatCOP(finance.summary.gastos.disponible)} />
+              <Kpi label="Ingresos recibidos" value={formatCOP(finance.summary.ingresos.ejecutado)} highlight />
+              <Kpi label="Balance actual" value={formatCOP(finance.summary.balanceActual)} highlight />
+            </div>
+            {finance.summary.faltante > 0 ? (
+              <p className="text-sm font-semibold text-warn">Falta por recaudar {formatCOP(finance.summary.faltante)} para cubrir el presupuesto de gastos.</p>
+            ) : null}
+          </section>
+        ) : null}
 
         {/* Coordinadores */}
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

@@ -186,6 +186,51 @@ async function main() {
   assert.doesNotMatch(await body(page), /Tarea de prueba admin/);
   console.log("✓ tablero: crear, avanzar, editar y eliminar tarea");
 
+  // Finanzas: presupuesto, ingreso, edición, eliminación y CSV
+  await page.goto(`${base}/finanzas?nuevo=1`);
+  await page.locator('input[name="kind"][value="gasto"]').check();
+  await page.selectOption("#category", "transporte");
+  await page.selectOption("#status", "proyectado");
+  await page.fill("#amount", "3.000.000");
+  await page.fill("#concept", "Bus Medellín – Tadó (ida y regreso)");
+  await page.fill("#entryDate", "2026-10-09");
+  await page.selectOption("#area", "transporte");
+  await page.getByRole("button", { name: "Registrar movimiento" }).click();
+  await page.locator('[data-concept="Bus Medellín – Tadó (ida y regreso)"]').waitFor();
+  let fin = await body(page);
+  assert.match(fin, /Movimiento registrado\./);
+  assert.match(fin, /Presupuesto de gastos\s*\$\s?3\.000\.000/i);
+  assert.match(fin, /Transporte y fletes/);
+  await page.locator('input[name="kind"][value="ingreso"]').check();
+  await page.selectOption("#category", "donaciones");
+  await page.selectOption("#status", "ejecutado");
+  await page.fill("#amount", "1000000");
+  await page.fill("#concept", "Donación parroquia");
+  await page.getByRole("button", { name: "Registrar movimiento" }).click();
+  await page.locator('[data-concept="Donación parroquia"]').waitFor();
+  fin = await body(page);
+  assert.match(fin, /Ingresos recibidos\s*\$\s?1\.000\.000/i);
+  assert.match(fin, /Donaciones/);
+  await page.getByRole("link", { name: "Bus Medellín – Tadó (ida y regreso)" }).click();
+  await page.waitForURL("**/finanzas/**");
+  await page.fill("#amount", "3.500.000");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.getByText("Cambios guardados.").waitFor();
+  await page.goto(`${base}/finanzas`);
+  fin = await body(page);
+  assert.match(fin, /Presupuesto de gastos\s*\$\s?3\.500\.000/i);
+  await page.goto(`${base}/finanzas?tipo=ingreso`);
+  assert.match(await body(page), /1 de 2/);
+  await page.getByRole("link", { name: "Donación parroquia" }).click();
+  await page.waitForURL("**/finanzas/**");
+  await page.getByRole("button", { name: "Eliminar movimiento" }).click();
+  await page.waitForURL(`${base}/finanzas`);
+  assert.doesNotMatch(await body(page), /Donación parroquia/);
+  const finCsv = await page.request.get(`${base}/finanzas/export`);
+  assert.equal(finCsv.status(), 200);
+  assert.match(await finCsv.text(), /Bus Medellín/);
+  console.log("✓ finanzas: presupuesto, ingreso, edición, filtro, eliminación y CSV");
+
   // Voluntarios: lista, filtro, gestión
   await page.goto(`${base}/voluntarios`);
   assert.match(await body(page), /2 registros en esta vista/);
@@ -340,6 +385,16 @@ async function main() {
   assert.ok((await page.locator('[data-title="Transporte confirmado"]').count()) > 0, "la tarea de transporte está en el tablero");
   assert.equal(await page.locator('[data-title="Transporte confirmado"] form button').count(), 0);
   assert.ok((await page.locator('[data-title="Tarea de Logística por coordinadora"] form button').count()) > 0);
+  // finanzas: consulta pero no registra (no coordina Financiero)
+  await page.goto(`${base}/finanzas`);
+  b = await body(page);
+  assert.match(b, /Presupuesto de gastos/i);
+  assert.match(b, /Bus Medellín/);
+  assert.equal(await page.getByRole("link", { name: "+ Nuevo movimiento" }).count(), 0);
+  await page.getByRole("link", { name: "Bus Medellín – Tadó (ida y regreso)" }).click();
+  await page.waitForURL("**/finanzas/**");
+  assert.equal(await page.locator("#concept").count(), 0);
+  assert.match(await body(page), /Solo el administrador y la coordinación de Financiero/);
   // voluntarios: ve datos de salud (Logística) pero no gestiona
   await page.goto(`${base}/voluntarios/${registrationId}`);
   b = await body(page);
@@ -383,6 +438,11 @@ async function main() {
   await page.goto(`${base}/tareas`);
   assert.equal(await page.getByRole("link", { name: "+ Nueva tarea" }).count(), 0);
   assert.equal(await page.locator("form button", { hasText: "Empezar" }).count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Finanzas" }).count(), 0);
+  await page.goto(`${base}/finanzas`);
+  await page.waitForURL(/\/admin\/m\/[^/?]+\?denegado=1$/);
+  const finDenied = await page.request.get(`${base}/finanzas/export`);
+  assert.equal(finDenied.status(), 403);
   await page.goto(`${base}/voluntarios`);
   b = await body(page);
   assert.doesNotMatch(b, /Descargar CSV/);

@@ -27,6 +27,7 @@
 | 2026-09-29 | Nuevo diseño del panel según el prototipo "Misión Chocó · Coordinación": consola con barra lateral, centro de misión, coordinación por áreas y tablero de tareas. Roles con alcance: administrador, líder de grupo (KAIROS, Fundación Pálpitos) y coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional). |
 | 2026-09-29 | Producción en Vercel: proyecto `donation` conectado a GitHub (cada push a la rama de trabajo despliega solo) con base de datos Turso, en <https://donation-psi-tawny.vercel.app>; la autenticación de Vercel queda solo para previews para que el formulario sea público. |
 | 2026-09-29 | La primera misión pasa a llamarse *Misión Levantar Chocó* (antes "Misión Chocó 01"); las bases ya creadas se renombran solas al arrancar si nadie editó el nombre. |
+| 2026-09-29 | Módulo de finanzas por misión: gastos e ingresos con estado proyectado / comprometido / ejecutado, presupuesto por categoría, aportes de voluntarios automáticos, balance y faltante por recaudar, movimientos con filtros, edición y CSV. Registran el administrador y la coordinación de Financiero. |
 
 ## Puntos por resolver entre documentos
 

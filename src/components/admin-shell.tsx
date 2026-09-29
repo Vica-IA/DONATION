@@ -8,7 +8,7 @@ import type { Mission } from "@/lib/db/schema";
 import { formatDateRange, initials } from "@/lib/format";
 import { dbMode, isEphemeralDb } from "@/lib/db";
 import { missionTimeline } from "@/lib/mission-timeline";
-import { can } from "@/lib/permissions";
+import { can, canViewFinance } from "@/lib/permissions";
 import type { PublicUser } from "@/lib/users";
 import { logoutAction } from "@/app/admin/actions";
 
@@ -74,6 +74,7 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
               <NavLink href={`${base}/voluntarios`} label="Voluntarios" count={counts?.volunteers} />
               <NavLink href={`${base}/tareas`} label="Tareas" count={counts?.openTasks} />
               <NavLink href={`${base}/areas/${AREAS[0].value}`} label="Coordinación" activePrefix={`${base}/areas/`} />
+              {canViewFinance(user) ? <NavLink href={`${base}/finanzas`} label="Finanzas" /> : null}
             </div>
           </nav>
         ) : null}

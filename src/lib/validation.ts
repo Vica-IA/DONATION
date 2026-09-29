@@ -11,7 +11,11 @@ import {
   SHIRT_SIZES,
   SKILLS,
   AREAS,
+  FINANCE_CATEGORIES,
+  FINANCE_KINDS,
+  FINANCE_STATUS,
   TASK_STATUS,
+  financeCategoryKind,
   TRANSPORT,
   USER_ROLES,
   values,
@@ -229,6 +233,40 @@ export const taskSchema = z.object({
 });
 
 export type TaskInput = z.infer<typeof taskSchema>;
+
+/** Valor en pesos: admite "1.500.000", "1,500,000" o "1500000"; sin decimales. */
+const copAmount = z.preprocess(
+  (v) => (typeof v === "string" ? v.replace(/[^\d-]/g, "") : v),
+  z.coerce
+    .number({ message: "Escribe el valor en pesos" })
+    .int("Sin decimales")
+    .min(1, "El valor debe ser mayor que cero")
+    .max(100_000_000_000, "Valor demasiado alto"),
+);
+
+export const financeEntrySchema = z
+  .object({
+    kind: z.enum(values(FINANCE_KINDS), { message: "Indica si es gasto o ingreso" }),
+    status: z.enum(values(FINANCE_STATUS)).default("proyectado"),
+    category: z.enum(values(FINANCE_CATEGORIES), { message: "Selecciona una categoría" }),
+    area: z
+      .union([z.enum(values(AREAS)), z.literal("general"), z.literal("")])
+      .optional()
+      .transform((v) => (v === undefined || v === "" ? null : v)),
+    concept: trimmed(160).min(3, "Describe el movimiento"),
+    amount: copAmount,
+    entryDate: z
+      .union([isoDate, z.literal("")])
+      .optional()
+      .transform((v) => (v === undefined || v === "" ? null : v)),
+    counterparty: optionalText(120),
+    reference: optionalText(80),
+    ownerUserId: z.string().trim().max(64).optional().default(""),
+    notes: optionalText(600),
+  })
+  .refine((d) => financeCategoryKind(d.category) === d.kind, { message: "La categoría no corresponde al tipo de movimiento", path: ["category"] });
+
+export type FinanceEntryInput = z.infer<typeof financeEntrySchema>;
 
 export const passwordResetSchema = z.object({
   password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),

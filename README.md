@@ -11,6 +11,7 @@ Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Levant
 - **Condiciones de participación**: tras confirmar, cada persona lee el consentimiento informado de la misión, marca las casillas, indica si autoriza el uso de su imagen y firma. Queda registro de fecha, versión y texto aceptado. El documento se edita por misión desde el panel.
 - **Aporte y requisitos de viaje**: seguimiento del aporte económico por persona, vacuna de fiebre amarilla, póliza de accidentes y contacto de emergencia completo.
 - **Consola de coordinación**: centro de misión (fase, días a la salida, criterios Go / No-Go, avance por área, pendientes críticos), coordinación por áreas y tablero de tareas.
+- **Finanzas por misión**: presupuesto de gastos (proyectado), compromisos y ejecución por categoría; ingresos por fuente (donaciones, patrocinios, recaudación) más los aportes de las personas voluntarias calculados desde sus fichas; balance actual y proyectado, faltante por recaudar, movimientos con filtros, edición y CSV. Registran el administrador y la coordinación de Financiero; líderes y coordinadores consultan.
 - **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña. Roles: administrador (control total), líder de grupo (KAIROS, Fundación Pálpitos: gestiona su gente), coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional: gestiona las tareas de su área) y solo consulta.
 - **Varias misiones**: crea y edita misiones desde el panel.
 
@@ -76,10 +77,10 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
 
 | Rol | Puede |
 |---|---|
-| Administrador | Control total: misiones, participantes, tareas, exportación y usuarios. |
-| Líder de grupo | Gestionar los participantes de su grupo (estado, rol, notas, contacto, aporte), ver sus datos de salud, exportar su lista, crear y cerrar tareas propias. |
-| Coordinador de área | Ver el equipo completo y gestionar las tareas de su área. Solo el de Logística ve datos de salud (primeros auxilios). |
-| Solo consulta | Ver cupos, listas, fichas y tareas sin datos de salud ni contacto de emergencia. No exporta ni edita. |
+| Administrador | Control total: misiones, participantes, tareas, finanzas, exportación y usuarios. |
+| Líder de grupo | Gestionar los participantes de su grupo (estado, rol, notas, contacto, aporte), ver sus datos de salud, exportar su lista, crear y cerrar tareas propias. Consultar las finanzas. |
+| Coordinador de área | Ver el equipo completo, gestionar las tareas de su área y consultar las finanzas. Solo el de Logística ve datos de salud (primeros auxilios); solo el de Financiero registra y edita movimientos financieros. |
+| Solo consulta | Ver cupos, listas, fichas y tareas sin datos de salud, contacto de emergencia ni finanzas. No exporta ni edita. |
 
 La matriz de permisos vive en `src/lib/permissions.ts`. Las contraseñas se guardan con scrypt; cambiar la contraseña cierra las demás sesiones de esa cuenta.
 
@@ -91,7 +92,7 @@ src/app/                      rutas (App Router)
   misiones/[slug]/confirmar   formulario público + acción de servidor
   misiones/[slug]/gracias     confirmación de envío (enlaza al paso 2)
   misiones/[slug]/condiciones/[id]  lectura y aceptación de las condiciones de participación
-  admin/m/[missionId]/        consola de una misión: resumen, voluntarios, tareas, áreas, editar, CSV
+  admin/m/[missionId]/        consola de una misión: resumen, voluntarios, tareas, áreas, finanzas, editar, CSV
   admin/(shell)/              páginas globales del panel: misiones, usuarios, mi cuenta
   admin/login                 acceso
 src/lib/
@@ -102,6 +103,7 @@ src/lib/
   users.ts, password.ts       usuarios del panel y contraseñas (scrypt)
   permissions.ts              roles, alcances (grupo / área) y permisos
   tasks.ts                    tareas por misión y área
+  finance.ts                  movimientos financieros: presupuesto, compromisos, ejecución, aportes y proyecciones
   mission-timeline.ts         fases y días a la salida de una misión
 src/components/admin-shell.tsx  barra lateral y encabezados del panel
   db/                         esquema Drizzle, migraciones SQL y semilla

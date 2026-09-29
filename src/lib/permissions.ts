@@ -19,12 +19,14 @@ export type Permission =
   | "participants.export" // (admin: todos; líder: su grupo)
   | "missions.manage"
   | "users.manage"
-  | "tasks.create";
+  | "tasks.create"
+  | "finance.view" // (admin, líderes y coordinadores)
+  | "finance.manage"; // (admin y coordinador de Financiero, ver canManageFinance)
 
 const MATRIX: Record<UserRole, readonly Permission[]> = {
-  admin: ["panel.view", "participants.manage", "participants.export", "missions.manage", "users.manage", "tasks.create"],
-  lider_grupo: ["panel.view", "participants.manage", "participants.export", "tasks.create"],
-  coordinador: ["panel.view", "tasks.create"],
+  admin: ["panel.view", "participants.manage", "participants.export", "missions.manage", "users.manage", "tasks.create", "finance.view", "finance.manage"],
+  lider_grupo: ["panel.view", "participants.manage", "participants.export", "tasks.create", "finance.view"],
+  coordinador: ["panel.view", "tasks.create", "finance.view"],
   consulta: ["panel.view"],
 };
 
@@ -76,11 +78,23 @@ export function taskAreasFor(actor: Actor): "all" | Area[] | null {
   return null;
 }
 
+/** Puede ver el módulo de finanzas (presupuesto, movimientos, proyecciones). */
+export function canViewFinance(actor: Actor): boolean {
+  return can(actor.role, "finance.view") || canManageFinance(actor);
+}
+
+/** Puede registrar, editar y borrar movimientos financieros: administrador y coordinación de Financiero. */
+export function canManageFinance(actor: Actor): boolean {
+  if (actor.role === "admin") return true;
+  if (actor.role === "coordinador") return actor.area === "financiero";
+  return false;
+}
+
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  admin: "Control total: misiones, participantes, tareas, exportación y usuarios.",
-  lider_grupo: "Gestiona los participantes de su grupo (estado, rol, notas, contacto, aporte), ve sus datos de salud y exporta su lista. Crea y cierra tareas propias.",
-  coordinador: "Coordina un área: ve el equipo completo, crea y gestiona las tareas de su área. Solo Logística ve datos de salud (primeros auxilios).",
-  consulta: "Solo lectura: cupos, listas y fichas sin datos de salud ni contacto de emergencia. No exporta ni edita.",
+  admin: "Control total: misiones, participantes, tareas, finanzas, exportación y usuarios.",
+  lider_grupo: "Gestiona los participantes de su grupo (estado, rol, notas, contacto, aporte), ve sus datos de salud y exporta su lista. Crea y cierra tareas propias. Consulta las finanzas.",
+  coordinador: "Coordina un área: ve el equipo completo, crea y gestiona las tareas de su área y consulta las finanzas. Solo Logística ve datos de salud; solo Financiero registra movimientos.",
+  consulta: "Solo lectura: cupos, listas y fichas sin datos de salud, contacto de emergencia ni finanzas. No exporta ni edita.",
 };
 
 export function isUserRole(value: string): value is UserRole {

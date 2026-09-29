@@ -141,6 +141,62 @@ export const TASK_STATUS = [
 
 export type TaskStatus = (typeof TASK_STATUS)[number]["value"];
 
+/** Tipos de movimiento financiero. */
+export const FINANCE_KINDS = [
+  { value: "gasto", label: "Gasto" },
+  { value: "ingreso", label: "Ingreso" },
+] as const satisfies readonly Option[];
+
+/** Estado de un movimiento: de la proyección a la ejecución. */
+export const FINANCE_STATUS = [
+  { value: "proyectado", label: "Proyectado" },
+  { value: "comprometido", label: "Comprometido" },
+  { value: "ejecutado", label: "Ejecutado" },
+] as const satisfies readonly Option[];
+
+export type FinanceKind = (typeof FINANCE_KINDS)[number]["value"];
+export type FinanceStatus = (typeof FINANCE_STATUS)[number]["value"];
+
+export const FINANCE_STATUS_HELP: Record<FinanceStatus, string> = {
+  proyectado: "Presupuesto o proyección: todavía no hay compromiso.",
+  comprometido: "Acuerdo en firme (orden de compra, promesa de donación) sin movimiento de dinero.",
+  ejecutado: "El dinero ya se pagó o ya se recibió.",
+};
+
+/**
+ * Categorías de gastos e ingresos. `kind` fija a qué tipo pertenece cada una.
+ * Los aportes de las personas voluntarias no se registran aquí: se calculan
+ * solos a partir del estado del aporte en cada ficha.
+ */
+export const FINANCE_CATEGORIES = [
+  { value: "transporte", label: "Transporte y fletes", kind: "gasto" },
+  { value: "alimentacion", label: "Alimentación y agua", kind: "gasto" },
+  { value: "alojamiento", label: "Alojamiento", kind: "gasto" },
+  { value: "materiales", label: "Materiales de construcción", kind: "gasto" },
+  { value: "herramientas", label: "Herramientas y equipos", kind: "gasto" },
+  { value: "salud", label: "Salud, seguros y botiquín", kind: "gasto" },
+  { value: "comunicaciones", label: "Comunicaciones y energía", kind: "gasto" },
+  { value: "actividades", label: "Actividades con la comunidad", kind: "gasto" },
+  { value: "administrativo", label: "Administrativo y bancario", kind: "gasto" },
+  { value: "imprevistos", label: "Imprevistos", kind: "gasto" },
+  { value: "otros_gastos", label: "Otros gastos", kind: "gasto" },
+  { value: "donaciones", label: "Donaciones", kind: "ingreso" },
+  { value: "patrocinios", label: "Patrocinios y empresas", kind: "ingreso" },
+  { value: "recaudacion", label: "Eventos de recaudación", kind: "ingreso" },
+  { value: "aportes_extra", label: "Aportes adicionales de voluntarios", kind: "ingreso" },
+  { value: "otros_ingresos", label: "Otros ingresos", kind: "ingreso" },
+] as const satisfies readonly (Option & { kind: FinanceKind })[];
+
+export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number]["value"];
+
+export function financeCategoriesFor(kind: FinanceKind) {
+  return FINANCE_CATEGORIES.filter((c) => c.kind === kind);
+}
+
+export function financeCategoryKind(category: string): FinanceKind | null {
+  return FINANCE_CATEGORIES.find((c) => c.value === category)?.kind ?? null;
+}
+
 export const MISSION_STATUS = [
   { value: "planificacion", label: "En planificación" },
   { value: "convocatoria", label: "Convocatoria abierta" },

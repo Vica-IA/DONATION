@@ -166,4 +166,29 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS tasks_owner_idx ON tasks (owner_user_id)`,
     ],
   },
+  {
+    id: "0005_finance_entries",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS finance_entries (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        kind TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'proyectado',
+        category TEXT NOT NULL,
+        area TEXT,
+        concept TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        entry_date TEXT,
+        counterparty TEXT,
+        reference TEXT,
+        owner_user_id TEXT REFERENCES users(id),
+        notes TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS finance_mission_idx ON finance_entries (mission_id, kind, status)`,
+      `CREATE INDEX IF NOT EXISTS finance_category_idx ON finance_entries (mission_id, category)`,
+    ],
+  },
 ];
