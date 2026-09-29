@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { CopyButton } from "@/components/copy-button";
 import { Field } from "@/components/ui";
 import { AREAS, USER_ROLES } from "@/lib/catalogs";
+import { formatDateTime } from "@/lib/format";
 import { ROLE_DESCRIPTIONS } from "@/lib/permissions";
 import type { PublicUser } from "@/lib/users";
-import { createUserAction, resetPasswordAction, updateUserAction, type UserFormState } from "./actions";
+import { createResetLinkAction, createUserAction, resetPasswordAction, updateUserAction, type UserFormState } from "./actions";
 
 const EMPTY: UserFormState = { errors: {}, values: {} };
 type Org = { id: string; name: string };
@@ -163,6 +165,41 @@ export function EditUserForm({ user, isSelf, organizations }: { user: PublicUser
       {isSelf ? <input type="hidden" name="active" value="on" /> : null}
       <button type="submit" className="btn-primary" disabled={pending}>
         {pending ? "Guardando…" : "Guardar"}
+      </button>
+    </form>
+  );
+}
+
+export function ResetLinkForm({ user }: { user: PublicUser }) {
+  const action = createResetLinkAction.bind(null, user.id);
+  const [state, formAction, pending] = useActionState<UserFormState, FormData>(action, EMPTY);
+  const { errors, link } = state;
+  const message = link ? `Hola ${user.name}, con este enlace creas tu nueva contraseña del panel DONATION (vale 48 horas y una sola vez): ${link.url}` : "";
+  const wa = link && user.phone ? `https://wa.me/${user.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}` : null;
+  return (
+    <form action={formAction} className="card space-y-4">
+      <h2 className="section-title">Enlace para crear nueva contraseña</h2>
+      <p className="text-sm text-muted">
+        Genera un enlace de un solo uso, válido 48 horas. La persona lo abre, escribe su nueva contraseña y entra directo. Sus sesiones anteriores se cierran.
+      </p>
+      {errors._form ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errors._form}</div> : null}
+      {link ? (
+        <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900" role="status">
+          <p className="font-semibold">Enlace listo (se muestra una sola vez)</p>
+          <input id="reset-link" readOnly value={link.url} className="input mt-2 text-xs" onFocus={(e) => e.currentTarget.select()} />
+          <p className="mt-1 text-xs text-brand-800">Vence el {formatDateTime(link.expiresAt)}. Si generas otro, este deja de servir.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <CopyButton text={link.url} />
+            {wa ? (
+              <a className="btn-accent" href={wa} target="_blank" rel="noopener noreferrer">
+                Enviar por WhatsApp
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      <button type="submit" className="btn-primary" disabled={pending}>
+        {pending ? "Generando…" : link ? "Generar otro enlace" : "Generar enlace"}
       </button>
     </form>
   );

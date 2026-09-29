@@ -191,4 +191,19 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS finance_category_idx ON finance_entries (mission_id, category)`,
     ],
   },
+  {
+    id: "0006_password_resets",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS password_resets (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS password_resets_user_idx ON password_resets (user_id)`,
+    ],
+  },
 ];

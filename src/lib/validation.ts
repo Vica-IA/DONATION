@@ -272,6 +272,14 @@ export const passwordResetSchema = z.object({
   password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
 });
 
+/** Nueva contraseña desde un enlace de restablecimiento. */
+export const resetWithTokenSchema = z
+  .object({
+    newPassword: password,
+    confirmPassword: z.string().max(200),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] });
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Escribe tu contraseña actual").max(200),

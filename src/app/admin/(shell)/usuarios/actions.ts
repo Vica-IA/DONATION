@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/auth";
 import { log } from "@/lib/data";
 import { isUniqueViolation } from "@/lib/db/errors";
 import { generateTempPassword } from "@/lib/password";
+import { createPasswordReset, resetUrl } from "@/lib/password-reset";
 import { countActiveAdmins, createUser, getUserById, setPassword, updateUser } from "@/lib/users";
 import { flattenErrors, formToObject, passwordResetSchema, userCreateSchema, userUpdateSchema, type FieldErrors } from "@/lib/validation";
 
@@ -13,6 +14,7 @@ export type UserFormState = {
   values: Record<string, unknown>;
   saved?: boolean;
   credentials?: { email: string; password: string };
+  link?: { url: string; expiresAt: string };
 };
 
 export async function createUserAction(_prev: UserFormState, formData: FormData): Promise<UserFormState> {
@@ -76,10 +78,23 @@ export async function updateUserAction(id: string, _prev: UserFormState, formDat
   return { errors: {}, values: {}, saved: true };
 }
 
+/** Enlace de un solo uso para que la persona cree su nueva contraseña. */
+export async function createResetLinkAction(id: string): Promise<UserFormState> {
+  const actor = await requirePermission("users.manage", `/admin/usuarios/${id}`);
+  const target = await getUserById(id);
+  if (!target) return { errors: { _form: "El usuario no existe." }, values: {} };
+  if (actor.id === id) return { errors: { _form: "Para cambiar tu propia contraseña usa Mi cuenta." }, values: {} };
+  if (!target.active) return { errors: { _form: "La cuenta está desactivada. Actívala antes de generar el enlace." }, values: {} };
+  const { token, expiresAt } = await createPasswordReset(id, actor.name);
+  revalidatePath(`/admin/usuarios/${id}`);
+  return { errors: {}, values: {}, saved: true, link: { url: resetUrl(token), expiresAt } };
+}
+
 export async function resetPasswordAction(id: string, _prev: UserFormState, formData: FormData): Promise<UserFormState> {
   const actor = await requirePermission("users.manage", `/admin/usuarios/${id}`);
   const target = await getUserById(id);
   if (!target) return { errors: { _form: "El usuario no existe." }, values: {} };
+  if (actor.id === id) return { errors: { _form: "Para cambiar tu propia contraseña usa Mi cuenta: restablecerla aquí cerraría tu sesión." }, values: {} };
   const parsed = passwordResetSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { errors: flattenErrors(parsed.error), values: {} };
 

@@ -161,6 +161,28 @@ async function main() {
   assert.match(dash, /Sin coordinador asignado/);
   console.log("✓ login y centro de misión (conteos, fases, criterios Go/No-Go)");
 
+  // Mi cuenta: cambio voluntario de contraseña y reingreso con la nueva
+  const ADMIN_NEW = `${PASSWORD}-nueva`;
+  await page.goto(`${BASE}/admin/cuenta`);
+  await page.fill("#currentPassword", "equivocada-123");
+  await page.fill("#newPassword", ADMIN_NEW);
+  await page.fill("#confirmPassword", ADMIN_NEW);
+  await page.getByRole("button", { name: "Cambiar contraseña" }).click();
+  await page.getByText("La contraseña actual no es correcta.").waitFor();
+  await page.fill("#currentPassword", PASSWORD);
+  await page.fill("#newPassword", ADMIN_NEW);
+  await page.fill("#confirmPassword", ADMIN_NEW);
+  await page.getByRole("button", { name: "Cambiar contraseña" }).click();
+  await page.waitForURL(/\/admin\/m\/[^/?]+\?cuenta=ok$/);
+  assert.match(await body(page), /Contraseña actualizada/);
+  await logoutNow();
+  await loginAs(ADMIN_EMAIL, PASSWORD);
+  await page.getByText("Correo o contraseña incorrectos.").waitFor();
+  await loginAs(ADMIN_EMAIL, ADMIN_NEW);
+  await page.waitForURL(/\/admin\/m\/[^/?]+$/);
+  dash = await body(page);
+  console.log("✓ mi cuenta: cambio de contraseña, la anterior deja de servir, reingreso con la nueva");
+
   // Go/No-Go: marcar el primer criterio
   await page.getByRole("button", { name: "Marcar hecha" }).first().click();
   await page.waitForTimeout(500);
@@ -358,6 +380,53 @@ async function main() {
   await page.goto(`${base}/areas/logistica`);
   assert.match(await body(page), /Carolina Coordinadora/);
   console.log("✓ usuarios: coordinador con área, líder con grupo, consulta, duplicado rechazado");
+
+  // Enlace de nueva contraseña: el admin lo genera, la persona lo usa una sola vez
+  await page.goto(`${BASE}/admin/usuarios/nuevo`);
+  await page.fill("#name", "Enlace Prueba");
+  await page.fill("#email", "enlace@prueba.local");
+  await page.fill("#phone", "3005550009");
+  await page.selectOption("#role", "consulta");
+  await page.getByRole("button", { name: "Crear usuario" }).click();
+  await page.getByText("Credenciales temporales").waitFor();
+  await page.goto(`${BASE}/admin/usuarios`);
+  await page.getByRole("row", { name: /Enlace Prueba/ }).getByRole("link", { name: "Editar" }).click();
+  await page.waitForURL("**/admin/usuarios/**");
+  await page.getByRole("button", { name: "Generar enlace" }).click();
+  await page.locator("#reset-link").waitFor();
+  const resetLink = await page.inputValue("#reset-link");
+  assert.match(resetLink, /\/admin\/restablecer\/[A-Za-z0-9_-]{20,}$/);
+  assert.match(await body(page), /Enviar por WhatsApp/);
+  // la ficha propia no permite restablecerse: remite a Mi cuenta
+  await page.goto(`${BASE}/admin/usuarios`);
+  await page.getByRole("row", { name: /\(tú\)/ }).getByRole("link", { name: "Editar" }).click();
+  await page.waitForURL("**/admin/usuarios/**");
+  assert.equal(await page.getByRole("button", { name: "Restablecer contraseña" }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "Generar enlace" }).count(), 0);
+  assert.match(await body(page), /Ir a Mi cuenta/);
+  await logoutNow();
+  // la persona abre el enlace sin sesión (el servidor de prueba corre en otro puerto que siteUrl())
+  const linkPath = new URL(resetLink).pathname;
+  await page.goto(`${BASE}${linkPath}`);
+  assert.match(await body(page), /Enlace Prueba/);
+  await page.fill("#newPassword", "enlace-nueva-2026");
+  await page.fill("#confirmPassword", "otra-distinta");
+  await page.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
+  await page.getByText("Las contraseñas no coinciden").waitFor();
+  await page.fill("#newPassword", "enlace-nueva-2026");
+  await page.fill("#confirmPassword", "enlace-nueva-2026");
+  await page.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
+  await page.waitForURL(/\/admin\/m\/[^/?]+\?cuenta=ok$/);
+  assert.match(await body(page), /Enlace Prueba/);
+  await logoutNow();
+  await page.goto(`${BASE}${linkPath}`);
+  assert.match(await body(page), /Este enlace ya no sirve/);
+  await loginAs("enlace@prueba.local", "enlace-nueva-2026");
+  await page.waitForURL(/\/admin\/m\/[^/?]+$/);
+  await logoutNow();
+  await loginAs(ADMIN_EMAIL, ADMIN_NEW);
+  await page.waitForURL(/\/admin\/m\/[^/?]+$/);
+  console.log("✓ enlace de nueva contraseña: generado, usado una sola vez, reingreso; ficha propia sin restablecer");
 
   // ---------- Coordinador ----------
   await logoutNow();

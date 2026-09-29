@@ -8,7 +8,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth-core";
  */
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  if (pathname.startsWith("/admin/login")) return NextResponse.next();
+  if (pathname.startsWith("/admin/login") || pathname.startsWith("/admin/restablecer/")) return NextResponse.next();
   const claims = await verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value);
   if (claims) return NextResponse.next();
   const login = new URL("/admin/login", request.url);

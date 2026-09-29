@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               Modo desarrollo: <code>{DEV_ADMIN_EMAIL}</code> / <code>{DEV_ADMIN_PASSWORD}</code>
             </p>
           ) : null}
-          <p className="mt-4 text-xs text-muted">¿Olvidaste tu contraseña? Pide a un administrador que te asigne una temporal.</p>
+          <p className="mt-4 text-xs text-muted">¿Olvidaste tu contraseña? Pide a un administrador un enlace para crear una nueva: lo abres, la escribes y entras directo.</p>
         </div>
       </div>
     </main>

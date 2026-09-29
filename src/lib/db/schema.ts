@@ -165,6 +165,23 @@ export const users = sqliteTable("users", {
   ...timestamps,
 });
 
+/** Enlaces de un solo uso para crear una nueva contraseña (generados por un administrador). */
+export const passwordResets = sqliteTable(
+  "password_resets",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    tokenHash: text("token_hash").notNull().unique(), // SHA-256 del token; el token solo viaja en el enlace
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    createdBy: text("created_by"),
+    createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (t) => [index("password_resets_user_idx").on(t.userId)],
+);
+
 /** Tareas de preparación y campo, por misión y área (alimentan Resumen, Áreas y Tablero). */
 export const tasks = sqliteTable(
   "tasks",
@@ -229,6 +246,7 @@ export type Volunteer = typeof volunteers.$inferSelect;
 export type MissionRegistration = typeof missionRegistrations.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type FinanceEntry = typeof financeEntries.$inferSelect;
+export type PasswordReset = typeof passwordResets.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type Task = typeof tasks.$inferSelect;

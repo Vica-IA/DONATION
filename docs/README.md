@@ -28,6 +28,7 @@
 | 2026-09-29 | Producción en Vercel: proyecto `donation` conectado a GitHub (cada push a la rama de trabajo despliega solo) con base de datos Turso, en <https://donation-psi-tawny.vercel.app>; la autenticación de Vercel queda solo para previews para que el formulario sea público. |
 | 2026-09-29 | La primera misión pasa a llamarse *Misión Levantar Chocó* (antes "Misión Chocó 01"); las bases ya creadas se renombran solas al arrancar si nadie editó el nombre. |
 | 2026-09-29 | Módulo de finanzas por misión: gastos e ingresos con estado proyectado / comprometido / ejecutado, presupuesto por categoría, aportes de voluntarios automáticos, balance y faltante por recaudar, movimientos con filtros, edición y CSV. Registran el administrador y la coordinación de Financiero. |
+| 2026-09-29 | Enlaces de un solo uso para crear nueva contraseña (los genera un administrador desde la ficha del usuario, con envío por WhatsApp); la ficha propia ya no permite restablecerse y remite a Mi cuenta. |
 
 ## Puntos por resolver entre documentos
 

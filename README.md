@@ -12,7 +12,7 @@ Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Levant
 - **Aporte y requisitos de viaje**: seguimiento del aporte económico por persona, vacuna de fiebre amarilla, póliza de accidentes y contacto de emergencia completo.
 - **Consola de coordinación**: centro de misión (fase, días a la salida, criterios Go / No-Go, avance por área, pendientes críticos), coordinación por áreas y tablero de tareas.
 - **Finanzas por misión**: presupuesto de gastos (proyectado), compromisos y ejecución por categoría; ingresos por fuente (donaciones, patrocinios, recaudación) más los aportes de las personas voluntarias calculados desde sus fichas; balance actual y proyectado, faltante por recaudar, movimientos con filtros, edición y CSV. Registran el administrador y la coordinación de Financiero; líderes y coordinadores consultan.
-- **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña. Roles: administrador (control total), líder de grupo (KAIROS, Fundación Pálpitos: gestiona su gente), coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional: gestiona las tareas de su área) y solo consulta.
+- **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña; cambia la suya en Mi cuenta y, si la olvida, un administrador le genera un enlace de un solo uso (48 horas) para crear una nueva, o le asigna una temporal. Roles: administrador (control total), líder de grupo (KAIROS, Fundación Pálpitos: gestiona su gente), coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional: gestiona las tareas de su área) y solo consulta.
 - **Varias misiones**: crea y edita misiones desde el panel.
 
 La documentación del proyecto está en [`docs/`](docs/), incluido el detalle técnico de esta iteración en [`docs/10.00_MVP_TECNICO.md`](docs/10.00_MVP_TECNICO.md).
@@ -71,7 +71,7 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
 
    Mientras no exista la base en Turso, puedes definir `ALLOW_EPHEMERAL_DB=true` para revisar el sitio con una base temporal (se reinicia sola y el formulario público queda cerrado). Quítala al conectar Turso.
 
-4. **Deploy.** Al primer arranque la app crea las tablas, carga la misión inicial y el primer administrador. Entra a `/admin`, crea las cuentas del equipo en "Usuarios" (cada una recibe una contraseña temporal que debe cambiar al entrar), revisa fechas, cupos y punto de encuentro, y comparte el enlace del formulario.
+4. **Deploy.** Al primer arranque la app crea las tablas, carga la misión inicial y el primer administrador. Entra a `/admin`, crea las cuentas del equipo en "Usuarios" (cada una recibe una contraseña temporal que debe cambiar al entrar; si alguien la olvida, genera desde su ficha un enlace para crear una nueva), revisa fechas, cupos y punto de encuentro, y comparte el enlace del formulario.
 
 ## Roles del panel
 
