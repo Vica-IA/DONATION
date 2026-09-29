@@ -530,6 +530,27 @@ export async function recordTermsAcceptance(
   return (await db.select().from(termsAcceptances).where(eq(termsAcceptances.id, id)).limit(1))[0];
 }
 
+/**
+ * Borra una inscripción con sus aceptaciones de condiciones. Si la persona no
+ * tiene otras inscripciones, también se borran sus datos personales (no queda
+ * información de alguien que ya no participa). La bitácora conserva el rastro.
+ */
+export async function deleteRegistration(id: string, actor: string): Promise<void> {
+  const db = await getDb();
+  const detail = await getRegistration(id);
+  if (!detail) return;
+  const { registration: r, volunteer: v } = detail;
+  await db.delete(termsAcceptances).where(eq(termsAcceptances.registrationId, id));
+  await db.delete(missionRegistrations).where(eq(missionRegistrations.id, id));
+  const [{ n: others }] = await db.select({ n: count() }).from(missionRegistrations).where(eq(missionRegistrations.volunteerId, v.id));
+  let detailText = `${v.fullName} · ${v.docType} ${v.docNumber} · estado ${r.status}`;
+  if (others === 0) {
+    await db.delete(volunteers).where(eq(volunteers.id, v.id));
+    detailText += " · datos personales borrados";
+  }
+  await log("registration", id, "eliminada", detailText, actor);
+}
+
 // ---------- Bitácora ----------
 
 export async function log(entityType: string, entityId: string, action: string, detail: string | null, actor: string) {

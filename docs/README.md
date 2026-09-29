@@ -33,6 +33,7 @@
 | 2026-09-29 | El formulario público deja de pedir disponibilidad, transporte y fecha de vacuna contra la fiebre amarilla; se retiran de la ficha, la lista y el CSV. |
 | 2026-09-29 | El formulario exige elegir un grupo registrado (sin "otro grupo") y, con Grupo Kairós, el refugio; el refugio se ve en la ficha, la lista y el CSV y el equipo puede editarlo. |
 | 2026-09-29 | Se retira la talla de camiseta. Las condiciones de participación se leen y aceptan dentro del formulario con una única casilla (antes: paso 2 con 17 casillas, imagen y firma); la aceptación por enlace personal usa la misma casilla única. |
+| 2026-09-29 | El administrador puede borrar una inscripción desde la ficha (con confirmación): se borran su aceptación de condiciones y, si la persona no tiene otras inscripciones, sus datos personales; queda en la bitácora. |
 
 ## Puntos por resolver entre documentos
 

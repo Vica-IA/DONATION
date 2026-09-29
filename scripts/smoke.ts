@@ -358,6 +358,26 @@ async function main() {
   assert.equal(url.searchParams.get("estado"), "lista_espera");
   console.log("✓ versión de condiciones y lista de espera al agotar cupos");
 
+  // Borrar inscripción (solo administrador): un registro cancelado de prueba
+  url = await fill({ name: "Borrar Prueba Cuatro", doc: "1000000004", attendance: "No podré asistir", phone: "3001000004", org: "Pálpitos" });
+  assert.equal(url.searchParams.get("estado"), "cancelado");
+  const deleteId = url.searchParams.get("r")!;
+  await page.goto(`${base}/voluntarios/${deleteId}`);
+  await page.getByRole("button", { name: "Eliminar inscripción" }).click(); // sin la casilla, el navegador no envía
+  await page.waitForTimeout(300);
+  assert.match(page.url(), new RegExp(`/voluntarios/${deleteId}$`));
+  await page.getByLabel(/Entiendo que se borra/).check();
+  await page.getByRole("button", { name: "Eliminar inscripción" }).click();
+  await page.waitForURL("**/voluntarios?eliminada=**");
+  assert.match(await body(page), /Inscripción de Borrar Prueba Cuatro eliminada/);
+  await page.goto(`${base}/voluntarios`);
+  assert.doesNotMatch(await body(page), /Borrar Prueba Cuatro/);
+  const gone = await page.goto(`${base}/voluntarios/${deleteId}`);
+  assert.equal(gone?.status(), 404);
+  await page.goto(base);
+  assert.match(await body(page), /Inscripción eliminada|eliminada/);
+  console.log("✓ borrar inscripción: confirmación, lista, ficha 404 y bitácora");
+
   // ---------- Usuarios y roles ----------
   await page.goto(`${BASE}/admin/usuarios`);
   assert.match(await body(page), /Usuarios del panel/);
@@ -522,6 +542,7 @@ async function main() {
   await page.goto(`${base}/voluntarios/${registrationId}`);
   assert.ok(await page.locator("#status").isVisible());
   assert.match(await body(page), /Ana Pérez/);
+  assert.equal(await page.getByRole("button", { name: "Eliminar inscripción" }).count(), 0); // borrar es solo del administrador
   const [leaderCsv] = await Promise.all([page.waitForEvent("download"), page.goto(`${base}/voluntarios`).then(() => page.getByRole("link", { name: "Descargar CSV" }).first().click())]);
   const leaderCsvText = fs.readFileSync((await leaderCsv.path())!, "utf8");
   assert.match(leaderCsvText, /Juan Prueba Uno/);

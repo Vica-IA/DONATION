@@ -17,6 +17,7 @@ export type Permission =
   | "panel.view"
   | "participants.manage" // (admin: todos; líder: su grupo)
   | "participants.export" // (admin: todos; líder: su grupo)
+  | "participants.delete" // (solo admin: borra la inscripción y los datos de la persona)
   | "missions.manage"
   | "users.manage"
   | "tasks.create"
@@ -24,7 +25,7 @@ export type Permission =
   | "finance.manage"; // (admin y coordinador de Financiero, ver canManageFinance)
 
 const MATRIX: Record<UserRole, readonly Permission[]> = {
-  admin: ["panel.view", "participants.manage", "participants.export", "missions.manage", "users.manage", "tasks.create", "finance.view", "finance.manage"],
+  admin: ["panel.view", "participants.manage", "participants.export", "participants.delete", "missions.manage", "users.manage", "tasks.create", "finance.view", "finance.manage"],
   lider_grupo: ["panel.view", "participants.manage", "participants.export", "tasks.create", "finance.view"],
   coordinador: ["panel.view", "tasks.create", "finance.view"],
   consulta: ["panel.view"],

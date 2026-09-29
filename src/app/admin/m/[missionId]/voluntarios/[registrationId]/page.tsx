@@ -8,7 +8,8 @@ import { ATTENDANCE, BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, ROLES, SKILLS, labe
 import { siteUrl } from "@/lib/config";
 import { getRegistration, listOrganizations, missionHasTerms } from "@/lib/data";
 import { formatCOP, formatDate, formatDateTime } from "@/lib/format";
-import { canManageRegistration, canSeeSensitive } from "@/lib/permissions";
+import { can, canManageRegistration, canSeeSensitive } from "@/lib/permissions";
+import { deleteRegistrationAction } from "./actions";
 import { ParticipantForm } from "./form";
 
 const ACTION_LABELS: Record<string, string> = {
@@ -16,10 +17,18 @@ const ACTION_LABELS: Record<string, string> = {
   actualizada_por_persona: "Actualizada por la persona",
   actualizada_por_admin: "Actualizada por el equipo",
   condiciones_aceptadas: "Condiciones aceptadas",
+  eliminada: "Inscripción eliminada",
 };
 
-export default async function ParticipantPage({ params }: { params: Promise<{ missionId: string; registrationId: string }> }) {
+export default async function ParticipantPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ missionId: string; registrationId: string }>;
+  searchParams: Promise<{ confirmar?: string }>;
+}) {
   const { missionId, registrationId: id } = await params;
+  const { confirmar } = await searchParams;
   const user = await requireUser(`/admin/m/${missionId}/voluntarios/${id}`);
   const [detail, organizations] = await Promise.all([getRegistration(id), listOrganizations()]);
   if (!detail || detail.mission.id !== missionId) notFound();
@@ -27,6 +36,7 @@ export default async function ParticipantPage({ params }: { params: Promise<{ mi
   // Un líder de grupo solo abre fichas de su grupo.
   if (user.role === "lider_grupo" && user.organizationId !== v.organizationId) notFound();
   const canManage = canManageRegistration(user, v.organizationId);
+  const canDelete = can(user.role, "participants.delete");
   const seeSensitive = canSeeSensitive(user, v.organizationId);
   const base = `/admin/m/${mission.id}`;
   const termsUrl = `${siteUrl()}/misiones/${mission.slug}/condiciones/${r.id}`;
@@ -170,6 +180,25 @@ export default async function ParticipantPage({ params }: { params: Promise<{ mi
               </ul>
             )}
           </section>
+          {canDelete ? (
+            <section className="card border-danger/30">
+              <h2 className="section-title">Eliminar inscripción</h2>
+              <p className="mt-2 text-sm text-muted">
+                Borra la inscripción de {v.fullName} en esta misión junto con su aceptación de condiciones. Si la persona no tiene otras inscripciones, también se
+                borran sus datos personales. No se puede deshacer; la bitácora conserva el registro del borrado.
+              </p>
+              {confirmar ? <p className="error">Marca la casilla para confirmar el borrado.</p> : null}
+              <form action={deleteRegistrationAction.bind(null, r.id)} className="mt-3 space-y-3">
+                <label className="choice">
+                  <input type="checkbox" name="confirm" required className="mt-0.5" />
+                  <span>Entiendo que se borra de forma definitiva.</span>
+                </label>
+                <button type="submit" className="btn-danger border border-danger/30">
+                  Eliminar inscripción
+                </button>
+              </form>
+            </section>
+          ) : null}
         </div>
       </div>
       </PageBody>

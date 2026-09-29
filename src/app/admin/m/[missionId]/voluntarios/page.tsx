@@ -12,7 +12,7 @@ export const metadata = { title: "Voluntarios" };
 
 type Props = {
   params: Promise<{ missionId: string }>;
-  searchParams: Promise<{ q?: string; estado?: string; grupo?: string; requisito?: string }>;
+  searchParams: Promise<{ q?: string; estado?: string; grupo?: string; requisito?: string; eliminada?: string }>;
 };
 
 export default async function MissionParticipantsPage({ params, searchParams }: Props) {
@@ -23,7 +23,7 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
   const canEditMission = can(user.role, "missions.manage");
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
-  const { q = "", estado = "", requisito = "" } = await searchParams;
+  const { q = "", estado = "", requisito = "", eliminada } = await searchParams;
   let { grupo = "" } = await searchParams;
   const scope = participantScope(user);
   if (scope.kind === "organization") grupo = scope.organizationId; // un líder solo ve su grupo
@@ -68,6 +68,11 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
         }
       />
       <PageBody>
+      {eliminada ? (
+        <div className="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800" role="status">
+          Inscripción de {eliminada} eliminada.
+        </div>
+      ) : null}
       {scope.kind === "organization" ? (
         <p className="text-xs text-muted">Ves únicamente las personas de tu grupo ({organizations.find((o) => o.id === grupo)?.name ?? "grupo"}). Fechas: {formatDateRange(mission.startDate, mission.endDate)}.</p>
       ) : null}

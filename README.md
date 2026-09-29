@@ -88,7 +88,7 @@ Cada valor de `ADMIN_PASSWORD_RESET` se aplica una sola vez (queda anotado en la
 
 | Rol | Puede |
 |---|---|
-| Administrador | Control total: misiones, participantes, tareas, finanzas, exportación y usuarios. |
+| Administrador | Control total: misiones, participantes (incluido borrar inscripciones), tareas, finanzas, exportación y usuarios. |
 | Líder de grupo | Gestionar los participantes de su grupo (estado, rol, notas, contacto, aporte), ver sus datos de salud, exportar su lista, crear y cerrar tareas propias. Consultar las finanzas. |
 | Coordinador de área | Ver el equipo completo, gestionar las tareas de su área y consultar las finanzas. Solo el de Logística ve datos de salud (primeros auxilios); solo el de Financiero registra y edita movimientos financieros. |
 | Solo consulta | Ver cupos, listas, fichas y tareas sin datos de salud, contacto de emergencia ni finanzas. No exporta ni edita. |
