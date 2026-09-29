@@ -12,7 +12,7 @@ import { missionTimeline } from "@/lib/mission-timeline";
 import { can, canEditTask, canExport } from "@/lib/permissions";
 import { criticalPending, goCriteria, listTasks, summarizeAreas, taskProgress } from "@/lib/tasks";
 import { listCoordinators } from "@/lib/users";
-import { AreaDot, DueLabel, TaskCheck } from "./tareas/task-bits";
+import { AreaDot, DueLabel, TaskCheck, defaultOwner } from "./tareas/task-bits";
 
 export const metadata = { title: "Centro de misión" };
 
@@ -237,7 +237,7 @@ export default async function MissionOverview({ params, searchParams }: Props) {
                     {t.title}
                   </Link>
                   <span className="text-xs text-muted">
-                    {areaInfo(t.area).short} · {t.ownerName ?? "coordinación"}
+                    {areaInfo(t.area).short} · {t.ownerName ?? defaultOwner(t.area)}
                   </span>
                 </div>
                 <DueLabel task={t} today={timeline.today} />

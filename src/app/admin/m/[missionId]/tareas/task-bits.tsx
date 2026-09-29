@@ -17,11 +17,16 @@ export function AreaDot({ area, withLabel = true }: { area: string; withLabel?: 
 export function DueLabel({ task, today }: { task: TaskRow; today: string }) {
   if (!task.dueDate) return <span className="mono text-xs text-faint">—</span>;
   const overdue = task.status !== "hecha" && task.dueDate < today;
-  return <span className={`mono text-xs ${overdue ? "font-semibold text-danger" : "text-muted"}`}>{formatShortDate(task.dueDate)}</span>;
+  return <span className={`mono whitespace-nowrap text-xs ${overdue ? "font-semibold text-danger" : "text-muted"}`}>{formatShortDate(task.dueDate)}</span>;
+}
+
+/** Nombre del responsable o, en su defecto, la coordinación del área. */
+export function defaultOwner(area: string): string {
+  return area === "general" ? "Dirección de misión" : `Coordinación de ${areaInfo(area).short}`;
 }
 
 export function OwnerLabel({ task }: { task: TaskRow }) {
-  return <span className="text-xs text-muted">{task.ownerName ?? `Coordinación de ${areaInfo(task.area).short}`}</span>;
+  return <span className="text-xs text-muted">{task.ownerName ?? defaultOwner(task.area)}</span>;
 }
 
 /** Casilla hecha / pendiente. Si no puede editar, solo muestra el estado. */

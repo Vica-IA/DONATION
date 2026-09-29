@@ -9,7 +9,7 @@ import { canEditTask, taskAreasFor } from "@/lib/permissions";
 import { getTask } from "@/lib/tasks";
 import { listAssignableUsers } from "@/lib/users";
 import { deleteTaskAction } from "../actions";
-import { AreaDot, StatusPill } from "../task-bits";
+import { AreaDot, StatusPill, defaultOwner } from "../task-bits";
 import { TaskForm } from "../task-form";
 
 export default async function TaskPage({ params }: { params: Promise<{ missionId: string; taskId: string }> }) {
@@ -53,7 +53,7 @@ export default async function TaskPage({ params }: { params: Promise<{ missionId
             <div className="card space-y-2 text-sm">
               <h2 className="section-title">Detalle</h2>
               <p>
-                <span className="text-muted">Responsable:</span> {task.ownerName ?? `Coordinación de ${areaInfo(task.area).short}`}
+                <span className="text-muted">Responsable:</span> {task.ownerName ?? defaultOwner(task.area)}
               </p>
               <p>
                 <span className="text-muted">Creada:</span> {formatDateTime(task.createdAt)}

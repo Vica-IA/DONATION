@@ -109,7 +109,7 @@ export default async function AreaPage({ params }: { params: Promise<{ missionId
                     <span className="text-xs text-faint">{t.ownerName ?? (person ? person.name : "Sin responsable")}</span>
                   </div>
                   <StatusPill status={t.status} />
-                  <span className="w-12 text-right">
+                  <span className="w-16 text-right">
                     <DueLabel task={t} today={today} />
                   </span>
                 </div>
