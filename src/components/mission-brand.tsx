@@ -21,11 +21,11 @@ export function missionBrand(mission: { slug: string }): Brand | null {
   return BRANDS[mission.slug] ?? null;
 }
 
-/** Portada de la misión, a todo el ancho del contenido. */
+/** Portada de la misión, de borde a borde de la pantalla (en pantallas anchas se recorta el cielo inferior). */
 export function MissionCover({ mission }: { mission: { slug: string } }) {
   const brand = missionBrand(mission);
   if (!brand) return null;
-  return <Image src={brand.cover} alt={brand.coverAlt} priority sizes="(max-width: 800px) 100vw, 768px" className="w-full rounded-2xl" />;
+  return <Image src={brand.cover} alt={brand.coverAlt} priority sizes="100vw" className="max-h-[440px] w-full object-cover object-top" />;
 }
 
 /** Logo del grupo convocante (altura fija, ancho automático). */

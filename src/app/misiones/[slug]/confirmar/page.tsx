@@ -32,9 +32,9 @@ export default async function ConfirmPage({ params }: Props) {
   return (
     <>
       <PublicHeader />
+      <MissionCover mission={mission} />
       <main className="container-narrow flex-1 py-6 sm:py-10">
-        <MissionCover mission={mission} />
-        <header className="mb-8 mt-6">
+        <header className="mb-8">
           <div className="flex flex-wrap items-center gap-3">
             <MissionLogo mission={mission} className="h-8" />
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">{mission.code}</p>
