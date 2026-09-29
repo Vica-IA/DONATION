@@ -46,6 +46,12 @@ rm -f data/donation.db && AUTH_SECRET=secreto-de-prueba ADMIN_EMAIL=admin@prueba
 BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=clave-prueba npm run smoke
 ```
 
+## Despliegue actual
+
+- Proyecto Vercel: `donation` (equipo `info-42989304s-projects`). URL de producción: <https://donation-psi-tawny.vercel.app>.
+- Desplegado desde la rama `claude/stoic-mayer-8o32sp` por API (la integración de GitHub de Vercel no está instalada en la organización Vica-IA, así que los pushes no despliegan solos; instálala en <https://github.com/apps/vercel> y conecta el repositorio desde el proyecto para activarlo).
+- Estado: **modo demostración** (`ALLOW_EPHEMERAL_DB=true`, sin Turso). El panel funciona con la misión, las tareas y el administrador iniciales, pero la base se reinicia sola y el formulario público está cerrado. Para abrir inscripciones: crear la base en Turso, definir `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`, quitar `ALLOW_EPHEMERAL_DB` y redesplegar.
+
 ## Desplegar en Vercel (producción)
 
 1. **Base de datos.** En Vercel el sistema de archivos no persiste, así que se usa [Turso](https://turso.tech) (libSQL gestionado, capa gratuita). Crea una base y copia su URL y token. También puedes instalarlo desde el Marketplace de Vercel (Storage → Turso), que crea las variables por ti.
