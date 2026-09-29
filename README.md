@@ -48,9 +48,11 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
 
 ## Despliegue actual
 
-- Proyecto Vercel: `donation` (equipo `info-42989304s-projects`). URL de producción: <https://donation-psi-tawny.vercel.app>.
-- Desplegado desde la rama `claude/stoic-mayer-8o32sp` por API (la integración de GitHub de Vercel no está instalada en la organización Vica-IA, así que los pushes no despliegan solos; instálala en <https://github.com/apps/vercel> y conecta el repositorio desde el proyecto para activarlo).
-- Base de datos: Turso conectado desde el Marketplace de Vercel (Storage → Connect Project en Production, Preview y Development). La app detecta la URL `libsql://` bajo cualquier nombre de variable; si no encuentra ninguna y `ALLOW_EPHEMERAL_DB=true`, cae al modo demostración (base temporal, formulario cerrado, aviso en el panel). El administrador ve en la barra lateral qué base usa el despliegue ("Base de datos: Turso / temporal / local").
+- Proyecto Vercel: `donaton` (equipo `info-42989304s-projects`). URL de producción: <https://donaton-lilac.vercel.app>. Formulario público: <https://donaton-lilac.vercel.app/misiones/choco-2026-01/confirmar>. Panel: <https://donaton-lilac.vercel.app/admin>.
+- Conectado al repositorio `Vica-IA/DONATON` con la integración de GitHub de Vercel: cada push a la rama `claude/stoic-mayer-8o32sp` (rama de producción del proyecto) despliega solo.
+- Base de datos: Turso, conectado como store del Marketplace de Vercel (Storage → Connect Project en Production, Preview y Development; crea `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`). La app detecta la URL `libsql://` bajo cualquier nombre de variable; si no encuentra ninguna y `ALLOW_EPHEMERAL_DB=true`, cae al modo demostración (base temporal, formulario cerrado, aviso en el panel). El administrador ve en la barra lateral qué base usa el despliegue ("Base de datos: Turso / temporal / local").
+- Protección de despliegues: la autenticación de Vercel aplica solo a previews; la URL de producción es pública para que las personas voluntarias puedan usar el formulario.
+- El proyecto `donation` (<https://donation-psi-tawny.vercel.app>) fue un despliegue manual en modo demostración, sin base persistente; puede eliminarse desde Vercel.
 
 ## Desplegar en Vercel (producción)
 
