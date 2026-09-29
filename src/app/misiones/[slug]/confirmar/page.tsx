@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
 import { Progress } from "@/components/ui";
-import { getMissionBySlug, getMissionStats, listOrganizations } from "@/lib/data";
-import { formatDateRange } from "@/lib/format";
+import { getMissionBySlug, getMissionStats, listOrganizations, missionHasTerms } from "@/lib/data";
+import { formatCOP, formatDateRange } from "@/lib/format";
 import { ConfirmForm } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +39,17 @@ export default async function ConfirmPage({ params }: Props) {
           {mission.meetingPoint ? (
             <p className="mt-2 text-sm text-slate-600">
               <span className="font-medium text-ink">Punto de encuentro:</span> {mission.meetingPoint}
+            </p>
+          ) : null}
+          {mission.contributionAmount ? (
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="font-medium text-ink">Aporte por persona:</span> {formatCOP(mission.contributionAmount)} aprox. (contribución a los
+              costos de la misión; el cupo se separa con el pago).
+            </p>
+          ) : null}
+          {missionHasTerms(mission) ? (
+            <p className="mt-2 text-sm text-slate-600">
+              Después de enviar este formulario deberás leer y aceptar las <span className="font-medium text-ink">condiciones de participación</span>.
             </p>
           ) : null}
           <div className="mt-5 rounded-2xl border border-brand-100 bg-brand-50 p-4">

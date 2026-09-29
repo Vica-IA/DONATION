@@ -36,6 +36,16 @@ export const missions = sqliteTable("missions", {
   meetingPoint: text("meeting_point"),
   contactName: text("contact_name"),
   contactPhone: text("contact_phone"),
+  /** Aporte económico por persona en COP (informativo; cláusula 30). */
+  contributionAmount: integer("contribution_amount"),
+  /** Condiciones de participación (markdown) que cada persona confirmada debe aceptar. */
+  termsMarkdown: text("terms_markdown"),
+  /** Casillas de aceptación, una por línea. */
+  termsDeclarations: text("terms_declarations").notNull().default(""),
+  /** Sube cuando el documento cambie de fondo: obliga a aceptar de nuevo. */
+  termsVersion: integer("terms_version").notNull().default(1),
+  /** Preguntar autorización de uso de imagen (SÍ / NO) al aceptar. */
+  termsImageConsent: integer("terms_image_consent", { mode: "boolean" }).notNull().default(true),
   ...timestamps,
 });
 
@@ -57,6 +67,10 @@ export const volunteers = sqliteTable(
     bloodType: text("blood_type"),
     emergencyContactName: text("emergency_contact_name"),
     emergencyContactPhone: text("emergency_contact_phone"),
+    emergencyContactRelationship: text("emergency_contact_relationship"),
+    emergencyContactPhone2: text("emergency_contact_phone2"),
+    yellowFeverVaccineDate: text("yellow_fever_vaccine_date"), // YYYY-MM-DD
+    accidentInsurance: text("accident_insurance"), // aseguradora / póliza
     medicalNotes: text("medical_notes"),
     dietaryNotes: text("dietary_notes"),
     shirtSize: text("shirt_size"),
@@ -94,12 +108,42 @@ export const missionRegistrations = sqliteTable(
     comments: text("comments"), // comentarios de la persona
     adminNotes: text("admin_notes"), // notas internas del equipo
     confirmedAt: text("confirmed_at"),
+    paymentStatus: text("payment_status").notNull().default("pendiente"), // PAYMENT_STATUS
+    paymentAmount: integer("payment_amount"), // COP
+    paymentNotes: text("payment_notes"),
     ...timestamps,
   },
   (t) => [
     uniqueIndex("registrations_mission_volunteer_idx").on(t.missionId, t.volunteerId),
     index("registrations_status_idx").on(t.missionId, t.status),
   ],
+);
+
+/** Aceptación de las condiciones de participación por una persona (evidencia). */
+export const termsAcceptances = sqliteTable(
+  "terms_acceptances",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    registrationId: text("registration_id")
+      .notNull()
+      .references(() => missionRegistrations.id),
+    volunteerId: text("volunteer_id")
+      .notNull()
+      .references(() => volunteers.id),
+    termsVersion: integer("terms_version").notNull(),
+    documentHash: text("document_hash").notNull(), // sha256 del texto aceptado
+    declarations: text("declarations").notNull(), // JSON con las casillas marcadas
+    imageConsent: integer("image_consent", { mode: "boolean" }), // null si no se preguntó
+    signedName: text("signed_name").notNull(),
+    signedDocNumber: text("signed_doc_number").notNull(),
+    signedCity: text("signed_city").notNull(),
+    userAgent: text("user_agent"),
+    acceptedAt: text("accepted_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (t) => [index("terms_acceptances_registration_idx").on(t.registrationId, t.termsVersion)],
 );
 
 /** Usuarios del panel (equipo). Cada uno tiene correo, contraseña propia y rol. */
@@ -133,3 +177,4 @@ export type Volunteer = typeof volunteers.$inferSelect;
 export type MissionRegistration = typeof missionRegistrations.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type TermsAcceptance = typeof termsAcceptances.$inferSelect;

@@ -1,15 +1,18 @@
 import "server-only";
-import { and, asc, count, desc, eq, like, or, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, asc, count, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   activityLog,
   missionRegistrations,
   missions,
   organizations,
+  termsAcceptances,
   volunteers,
   type Mission,
   type MissionRegistration,
   type Organization,
+  type TermsAcceptance,
   type Volunteer,
 } from "./db/schema";
 import type { RegistrationStatus } from "./catalogs";
@@ -64,6 +67,10 @@ export async function updateMission(id: string, input: MissionInput, actor: stri
 export type MissionStats = {
   capacity: number;
   total: number;
+  /** Confirmados que aceptaron la versión vigente de las condiciones. */
+  termsAccepted: number;
+  /** Confirmados con aporte pagado o exento. */
+  paid: number;
   byStatus: Record<RegistrationStatus, number>;
   byOrganization: { name: string; confirmed: number; total: number }[];
   byRole: { role: string; confirmed: number }[];
@@ -133,9 +140,26 @@ export async function getMissionStats(mission: Mission): Promise<MissionStats> {
     .where(confirmedOnly)
     .groupBy(missionRegistrations.availability);
 
+  const [{ n: termsAccepted }] = await db
+    .select({ n: count() })
+    .from(missionRegistrations)
+    .where(
+      and(
+        confirmedOnly,
+        sql`exists (select 1 from ${termsAcceptances} where ${termsAcceptances.registrationId} = ${missionRegistrations.id} and ${termsAcceptances.termsVersion} = ${mission.termsVersion})`,
+      ),
+    );
+
+  const [{ n: paid }] = await db
+    .select({ n: count() })
+    .from(missionRegistrations)
+    .where(and(confirmedOnly, inArray(missionRegistrations.paymentStatus, ["pagado", "exento"])));
+
   return {
     capacity: mission.capacity,
     total,
+    termsAccepted,
+    paid,
     byStatus,
     byOrganization: orgRows.map((r) => ({ name: r.name, confirmed: Number(r.confirmed), total: r.total })),
     byRole: roleRows,
@@ -151,16 +175,22 @@ export type RegistrationRow = {
   registration: MissionRegistration;
   volunteer: Volunteer;
   organization: Organization | null;
+  /** Fecha de aceptación de la versión vigente de las condiciones, o null. */
+  termsAcceptedAt: string | null;
+  imageConsent: boolean | null;
 };
 
 export type RegistrationFilters = {
   q?: string;
   status?: string;
   organizationId?: string;
+  /** 'condiciones' = sin aceptar condiciones; 'aporte' = aporte pendiente o parcial. */
+  requisito?: string;
 };
 
-export async function listRegistrations(missionId: string, filters: RegistrationFilters = {}): Promise<RegistrationRow[]> {
+export async function listRegistrations(mission: Mission, filters: RegistrationFilters = {}): Promise<RegistrationRow[]> {
   const db = await getDb();
+  const missionId = mission.id;
   const conditions = [eq(missionRegistrations.missionId, missionId)];
   if (filters.status) conditions.push(eq(missionRegistrations.status, filters.status));
   if (filters.organizationId) conditions.push(eq(volunteers.organizationId, filters.organizationId));
@@ -185,10 +215,35 @@ export async function listRegistrations(missionId: string, filters: Registration
       sql`case ${missionRegistrations.status} when 'confirmado' then 0 when 'lista_espera' then 1 when 'pendiente' then 2 else 3 end`,
       asc(volunteers.fullName),
     );
-  return rows;
+
+  const acceptances = await db
+    .select({
+      registrationId: termsAcceptances.registrationId,
+      acceptedAt: termsAcceptances.acceptedAt,
+      imageConsent: termsAcceptances.imageConsent,
+    })
+    .from(termsAcceptances)
+    .where(and(eq(termsAcceptances.missionId, missionId), eq(termsAcceptances.termsVersion, mission.termsVersion)));
+  const byRegistration = new Map(acceptances.map((a) => [a.registrationId, a]));
+
+  const result: RegistrationRow[] = rows.map((row) => {
+    const a = byRegistration.get(row.registration.id);
+    return { ...row, termsAcceptedAt: a?.acceptedAt ?? null, imageConsent: a?.imageConsent ?? null };
+  });
+
+  if (filters.requisito === "condiciones") return result.filter((r) => !r.termsAcceptedAt);
+  if (filters.requisito === "aporte") return result.filter((r) => r.registration.paymentStatus === "pendiente" || r.registration.paymentStatus === "parcial");
+  return result;
 }
 
-export type RegistrationDetail = RegistrationRow & { mission: Mission; activity: (typeof activityLog.$inferSelect)[] };
+export type RegistrationDetail = RegistrationRow & {
+  mission: Mission;
+  activity: (typeof activityLog.$inferSelect)[];
+  /** Aceptación de la versión vigente, si existe. */
+  termsAcceptance: TermsAcceptance | null;
+  /** Historial completo de aceptaciones (todas las versiones). */
+  acceptances: TermsAcceptance[];
+};
 
 export async function getRegistration(id: string): Promise<RegistrationDetail | null> {
   const db = await getDb();
@@ -208,7 +263,20 @@ export async function getRegistration(id: string): Promise<RegistrationDetail | 
     .where(and(eq(activityLog.entityType, "registration"), eq(activityLog.entityId, id)))
     .orderBy(desc(activityLog.createdAt))
     .limit(30);
-  return { ...row, activity };
+  const acceptances = await db
+    .select()
+    .from(termsAcceptances)
+    .where(eq(termsAcceptances.registrationId, id))
+    .orderBy(desc(termsAcceptances.acceptedAt));
+  const termsAcceptance = acceptances.find((a) => a.termsVersion === row.mission.termsVersion) ?? null;
+  return {
+    ...row,
+    activity,
+    acceptances,
+    termsAcceptance,
+    termsAcceptedAt: termsAcceptance?.acceptedAt ?? null,
+    imageConsent: termsAcceptance?.imageConsent ?? null,
+  };
 }
 
 export type SubmitResult = {
@@ -243,6 +311,10 @@ export async function submitRegistration(mission: Mission, input: RegistrationIn
     bloodType: input.bloodType,
     emergencyContactName: input.emergencyContactName,
     emergencyContactPhone: input.emergencyContactPhone,
+    emergencyContactRelationship: input.emergencyContactRelationship ?? null,
+    emergencyContactPhone2: input.emergencyContactPhone2 ?? null,
+    yellowFeverVaccineDate: input.yellowFeverVaccineDate ?? null,
+    accidentInsurance: input.accidentInsurance ?? null,
     medicalNotes: input.medicalNotes ?? null,
     dietaryNotes: input.dietaryNotes ?? null,
     shirtSize: input.shirtSize,
@@ -337,6 +409,9 @@ export type AdminRegistrationUpdate = {
   status: RegistrationStatus;
   assignedRole: string | null;
   adminNotes: string | null;
+  paymentStatus: string;
+  paymentAmount: number | null;
+  paymentNotes: string | null;
   fullName: string;
   phone: string;
   email: string | null;
@@ -357,6 +432,9 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
       status: input.status,
       assignedRole: input.assignedRole,
       adminNotes: input.adminNotes,
+      paymentStatus: input.paymentStatus,
+      paymentAmount: input.paymentAmount,
+      paymentNotes: input.paymentNotes,
       confirmedAt: input.status === "confirmado" ? (current.registration.confirmedAt ?? now) : current.registration.confirmedAt,
       updatedAt: now,
     })
@@ -370,7 +448,86 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
   const changes: string[] = [];
   if (current.registration.status !== input.status) changes.push(`estado ${current.registration.status} → ${input.status}`);
   if ((current.registration.assignedRole ?? null) !== input.assignedRole) changes.push(`rol asignado: ${input.assignedRole ?? "—"}`);
+  if (current.registration.paymentStatus !== input.paymentStatus) changes.push(`aporte ${current.registration.paymentStatus} → ${input.paymentStatus}`);
   await log("registration", id, "actualizada_por_admin", changes.join("; ") || "datos editados", actor);
+}
+
+// ---------- Condiciones de participación ----------
+
+export function missionHasTerms(mission: Mission): boolean {
+  return Boolean(mission.termsMarkdown && mission.termsMarkdown.trim());
+}
+
+export function termsDeclarationList(mission: Mission): string[] {
+  return mission.termsDeclarations
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+/** Huella del texto aceptado, para dejar evidencia de qué versión exacta se aceptó. */
+export function termsDocumentHash(mission: Mission): string {
+  return createHash("sha256")
+    .update(`v${mission.termsVersion}\n${mission.termsMarkdown ?? ""}\n${mission.termsDeclarations}`)
+    .digest("hex");
+}
+
+export type TermsContext = { mission: Mission; registration: MissionRegistration; volunteer: Volunteer; acceptance: TermsAcceptance | null };
+
+/** Contexto de la página pública de condiciones: la inscripción debe pertenecer a la misión del slug. */
+export async function getTermsContext(slug: string, registrationId: string): Promise<TermsContext | null> {
+  const db = await getDb();
+  const mission = await getMissionBySlug(slug);
+  if (!mission) return null;
+  const row = (
+    await db
+      .select({ registration: missionRegistrations, volunteer: volunteers })
+      .from(missionRegistrations)
+      .innerJoin(volunteers, eq(volunteers.id, missionRegistrations.volunteerId))
+      .where(and(eq(missionRegistrations.id, registrationId), eq(missionRegistrations.missionId, mission.id)))
+      .limit(1)
+  )[0];
+  if (!row) return null;
+  const acceptance =
+    (
+      await db
+        .select()
+        .from(termsAcceptances)
+        .where(and(eq(termsAcceptances.registrationId, registrationId), eq(termsAcceptances.termsVersion, mission.termsVersion)))
+        .orderBy(desc(termsAcceptances.acceptedAt))
+        .limit(1)
+    )[0] ?? null;
+  return { mission, registration: row.registration, volunteer: row.volunteer, acceptance };
+}
+
+export async function recordTermsAcceptance(
+  ctx: TermsContext,
+  input: { declarations: string[]; imageConsent: boolean | null; signedName: string; signedCity: string; userAgent: string | null },
+): Promise<TermsAcceptance> {
+  const db = await getDb();
+  const id = crypto.randomUUID();
+  await db.insert(termsAcceptances).values({
+    id,
+    missionId: ctx.mission.id,
+    registrationId: ctx.registration.id,
+    volunteerId: ctx.volunteer.id,
+    termsVersion: ctx.mission.termsVersion,
+    documentHash: termsDocumentHash(ctx.mission),
+    declarations: JSON.stringify(input.declarations),
+    imageConsent: input.imageConsent,
+    signedName: input.signedName,
+    signedDocNumber: ctx.volunteer.docNumber,
+    signedCity: input.signedCity,
+    userAgent: input.userAgent,
+  });
+  await log(
+    "registration",
+    ctx.registration.id,
+    "condiciones_aceptadas",
+    `versión ${ctx.mission.termsVersion}${input.imageConsent === null ? "" : input.imageConsent ? " · autoriza imagen" : " · no autoriza imagen"}`,
+    "publico",
+  );
+  return (await db.select().from(termsAcceptances).where(eq(termsAcceptances.id, id)).limit(1))[0];
 }
 
 // ---------- Bitácora ----------

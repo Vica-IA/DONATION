@@ -52,6 +52,7 @@ export async function confirmParticipation(
   const params = new URLSearchParams({
     estado: result.status,
     nombre: parsed.data.fullName.split(" ")[0] ?? "",
+    r: result.registrationId,
     ...(result.isUpdate ? { actualizado: "1" } : {}),
   });
   redirect(`/misiones/${slug}/gracias?${params.toString()}`);

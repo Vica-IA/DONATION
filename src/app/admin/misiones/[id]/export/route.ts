@@ -12,7 +12,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ id: string
   const { id } = await ctx.params;
   const mission = await getMissionById(id);
   if (!mission) return new Response("Misión no encontrada", { status: 404 });
-  const rows = await listRegistrations(mission.id);
+  const rows = await listRegistrations(mission);
   const csv = registrationsToCsv(rows);
   const stamp = new Date().toISOString().slice(0, 10);
   return new Response(csv, {

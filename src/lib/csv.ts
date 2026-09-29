@@ -1,4 +1,4 @@
-import { AVAILABILITY, BLOOD_TYPES, DOC_TYPES, REGISTRATION_STATUS, ROLES, SKILLS, TRANSPORT, labelOf } from "./catalogs";
+import { AVAILABILITY, BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, SKILLS, TRANSPORT, labelOf } from "./catalogs";
 import type { RegistrationRow } from "./data";
 
 function cell(value: unknown): string {
@@ -22,7 +22,11 @@ export function registrationsToCsv(rows: RegistrationRow[]): string {
     "EPS",
     "RH",
     "Contacto emergencia",
+    "Parentesco",
     "Tel. emergencia",
+    "Tel. emergencia 2",
+    "Vacuna fiebre amarilla",
+    "Póliza accidentes",
     "Condiciones médicas",
     "Alimentación",
     "Talla",
@@ -36,10 +40,15 @@ export function registrationsToCsv(rows: RegistrationRow[]): string {
     "Rol asignado",
     "Comentarios",
     "Notas internas",
+    "Aporte",
+    "Aporte valor",
+    "Aporte notas",
+    "Condiciones aceptadas el",
+    "Autoriza imagen",
     "Confirmado el",
     "Registrado el",
   ];
-  const lines = rows.map(({ registration: r, volunteer: v, organization: o }) => {
+  const lines = rows.map(({ registration: r, volunteer: v, organization: o, termsAcceptedAt, imageConsent }) => {
     let skills: string[] = [];
     try {
       skills = JSON.parse(v.skills);
@@ -59,7 +68,11 @@ export function registrationsToCsv(rows: RegistrationRow[]): string {
       v.eps,
       labelOf(BLOOD_TYPES, v.bloodType),
       v.emergencyContactName,
+      v.emergencyContactRelationship,
       v.emergencyContactPhone,
+      v.emergencyContactPhone2,
+      v.yellowFeverVaccineDate,
+      v.accidentInsurance,
       v.medicalNotes,
       v.dietaryNotes,
       v.shirtSize,
@@ -73,6 +86,11 @@ export function registrationsToCsv(rows: RegistrationRow[]): string {
       labelOf(ROLES, r.assignedRole),
       r.comments,
       r.adminNotes,
+      labelOf(PAYMENT_STATUS, r.paymentStatus),
+      r.paymentAmount,
+      r.paymentNotes,
+      termsAcceptedAt,
+      imageConsent === null ? "" : imageConsent ? "Sí" : "No",
       r.confirmedAt,
       r.createdAt,
     ]

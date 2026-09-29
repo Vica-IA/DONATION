@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { MISSION_STATUS, ROLES, TRANSPORT, AVAILABILITY, labelOf } from "@/lib/catalogs";
 import { siteUrl } from "@/lib/config";
-import { getMissionStats, listMissions, recentActivity } from "@/lib/data";
+import { getMissionStats, listMissions, missionHasTerms, recentActivity } from "@/lib/data";
 import { formatDateRange, formatDateTime, percent } from "@/lib/format";
 import { can } from "@/lib/permissions";
 
@@ -20,6 +20,7 @@ const ACTION_LABELS: Record<string, string> = {
   actualizada_por_admin: "actualizada por el equipo",
   contrasena_restablecida: "contraseña restablecida",
   contrasena_cambiada: "contraseña cambiada",
+  condiciones_aceptadas: "condiciones aceptadas",
 };
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<{ denegado?: string; cuenta?: string }> }) {
@@ -109,6 +110,17 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
               </div>
             </div>
 
+            {s.byStatus.confirmado > 0 ? (
+              <p className="text-sm text-slate-600">
+                Requisitos de los confirmados:{" "}
+                {missionHasTerms(m) ? (
+                  <>
+                    condiciones aceptadas <span className="font-semibold text-ink">{s.termsAccepted}/{s.byStatus.confirmado}</span> ·{" "}
+                  </>
+                ) : null}
+                aporte pagado <span className="font-semibold text-ink">{s.paid}/{s.byStatus.confirmado}</span>
+              </p>
+            ) : null}
             <div>
               <div className="mb-1 flex justify-between text-xs text-slate-500">
                 <span>Ocupación</span>

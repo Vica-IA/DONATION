@@ -5,6 +5,7 @@ import {
   BLOOD_TYPES,
   DOC_TYPES,
   MISSION_STATUS,
+  PAYMENT_STATUS,
   REGISTRATION_STATUS,
   ROLES,
   SHIRT_SIZES,
@@ -55,6 +56,16 @@ export const registrationSchema = z.object({
   bloodType: z.union([z.enum(values(BLOOD_TYPES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
   emergencyContactName: trimmed(120).min(3, "Indica un contacto de emergencia"),
   emergencyContactPhone: phone,
+  emergencyContactRelationship: optionalText(60),
+  emergencyContactPhone2: z
+    .union([phone, z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
+  yellowFeverVaccineDate: z
+    .union([isoDate, z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
+  accidentInsurance: optionalText(120),
   medicalNotes: optionalText(600),
   dietaryNotes: optionalText(300),
   shirtSize: z.union([z.enum(values(SHIRT_SIZES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
@@ -75,6 +86,12 @@ export const adminRegistrationSchema = z.object({
   status: z.enum(values(REGISTRATION_STATUS)),
   assignedRole: z.union([z.enum(values(ROLES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
   adminNotes: optionalText(2000),
+  paymentStatus: z.enum(values(PAYMENT_STATUS)),
+  paymentAmount: z
+    .union([z.coerce.number().int().min(0).max(100_000_000), z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
+  paymentNotes: optionalText(300),
   fullName: trimmed(120).min(3, "Nombre requerido"),
   phone,
   email: z
@@ -102,6 +119,28 @@ export const missionSchema = z
     meetingPoint: optionalText(200),
     contactName: optionalText(120),
     contactPhone: optionalText(30),
+    contributionAmount: z
+      .union([z.coerce.number().int().min(0).max(100_000_000), z.literal("")])
+      .optional()
+      .transform((v) => (v === undefined || v === "" ? null : v)),
+    termsMarkdown: z
+      .string()
+      .max(200_000, "El documento es demasiado largo")
+      .optional()
+      .transform((v) => (v === undefined || v.trim() === "" ? null : v.replace(/\r\n/g, "\n"))),
+    termsDeclarations: z
+      .string()
+      .max(20_000)
+      .optional()
+      .transform((v) =>
+        (v ?? "")
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join("\n"),
+      ),
+    termsVersion: z.coerce.number().int().min(1, "Mínimo 1").max(1000),
+    termsImageConsent: z.boolean().default(false),
   })
   .refine((m) => m.endDate >= m.startDate, {
     message: "La fecha de fin debe ser igual o posterior a la de inicio",
@@ -109,6 +148,13 @@ export const missionSchema = z
   });
 
 export type MissionInput = z.infer<typeof missionSchema>;
+
+export const termsAcceptanceSchema = z.object({
+  signedName: trimmed(120).min(3, "Escribe tu nombre completo tal como lo registraste"),
+  signedCity: trimmed(80).min(2, "Indica la ciudad desde la que aceptas"),
+  imageConsent: z.union([z.literal("si"), z.literal("no"), z.literal("")]).optional(),
+  declarations: z.array(z.string().max(500)).default([]),
+});
 
 const email = z.string().trim().toLowerCase().email("Correo inválido").max(120);
 const password = z.string().min(PASSWORD_MIN_LENGTH, `Mínimo ${PASSWORD_MIN_LENGTH} caracteres`).max(200);

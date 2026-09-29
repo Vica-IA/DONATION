@@ -223,6 +223,22 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
             <input id="emergencyContactPhone" name="emergencyContactPhone" type="tel" className={cls("emergencyContactPhone")} defaultValue={str(values, "emergencyContactPhone")} />
           </Field>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Parentesco del contacto de emergencia" htmlFor="emergencyContactRelationship" error={errors.emergencyContactRelationship}>
+            <input id="emergencyContactRelationship" name="emergencyContactRelationship" className={cls("emergencyContactRelationship")} defaultValue={str(values, "emergencyContactRelationship")} placeholder="Madre, esposo, hermana…" />
+          </Field>
+          <Field label="Segundo teléfono de emergencia" htmlFor="emergencyContactPhone2" error={errors.emergencyContactPhone2}>
+            <input id="emergencyContactPhone2" name="emergencyContactPhone2" type="tel" className={cls("emergencyContactPhone2")} defaultValue={str(values, "emergencyContactPhone2")} />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Fecha de vacuna contra la fiebre amarilla" htmlFor="yellowFeverVaccineDate" error={errors.yellowFeverVaccineDate} help="Requisito para viajar al Chocó: mínimo 10 días antes de la salida. Si aún no la tienes, déjalo vacío.">
+            <input id="yellowFeverVaccineDate" name="yellowFeverVaccineDate" type="date" className={cls("yellowFeverVaccineDate")} defaultValue={str(values, "yellowFeverVaccineDate")} />
+          </Field>
+          <Field label="Póliza de accidentes personales" htmlFor="accidentInsurance" error={errors.accidentInsurance} help="Aseguradora o número de póliza, si ya la tienes.">
+            <input id="accidentInsurance" name="accidentInsurance" className={cls("accidentInsurance")} defaultValue={str(values, "accidentInsurance")} />
+          </Field>
+        </div>
         <Field label="Alergias, condiciones médicas o medicamentos" htmlFor="medicalNotes" error={errors.medicalNotes} help="Solo el equipo coordinador verá esta información.">
           <textarea id="medicalNotes" name="medicalNotes" rows={2} className={cls("medicalNotes")} defaultValue={str(values, "medicalNotes")} />
         </Field>

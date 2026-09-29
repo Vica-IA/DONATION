@@ -37,3 +37,20 @@ export function percent(part: number, total: number): number {
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+const COP_FMT = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+
+export function formatCOP(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return "";
+  return COP_FMT.format(amount);
+}
+
+/** Compara nombres sin tildes, mayúsculas ni espacios repetidos. */
+export function normalizeName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}

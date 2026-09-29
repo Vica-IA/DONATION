@@ -2,14 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { AVAILABILITY, REGISTRATION_STATUS, ROLES, TRANSPORT, labelOf } from "@/lib/catalogs";
-import { getMissionById, getMissionStats, listOrganizations, listRegistrations } from "@/lib/data";
+import { AVAILABILITY, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, TRANSPORT, labelOf } from "@/lib/catalogs";
+import { getMissionById, getMissionStats, listOrganizations, listRegistrations, missionHasTerms } from "@/lib/data";
 import { formatDateRange } from "@/lib/format";
 import { can } from "@/lib/permissions";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ q?: string; estado?: string; grupo?: string }>;
+  searchParams: Promise<{ q?: string; estado?: string; grupo?: string; requisito?: string }>;
 };
 
 export default async function MissionParticipantsPage({ params, searchParams }: Props) {
@@ -20,10 +20,11 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
   const canEditMission = can(user.role, "missions.manage");
   const mission = await getMissionById(id);
   if (!mission) notFound();
-  const { q = "", estado = "", grupo = "" } = await searchParams;
+  const { q = "", estado = "", grupo = "", requisito = "" } = await searchParams;
+  const hasTerms = missionHasTerms(mission);
 
   const [rows, organizations, stats] = await Promise.all([
-    listRegistrations(mission.id, { q, status: estado, organizationId: grupo }),
+    listRegistrations(mission, { q, status: estado, organizationId: grupo, requisito }),
     listOrganizations(),
     getMissionStats(mission),
   ]);
@@ -44,6 +45,8 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
           <p className="text-sm text-slate-600">
             {formatDateRange(mission.startDate, mission.endDate)} · {stats.byStatus.confirmado}/{mission.capacity} confirmados ·{" "}
             {stats.byStatus.lista_espera} en espera · {stats.byStatus.pendiente} pendientes
+            {hasTerms ? ` · condiciones aceptadas ${stats.termsAccepted}/${stats.byStatus.confirmado}` : ""} · aporte pagado {stats.paid}/
+            {stats.byStatus.confirmado}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -60,7 +63,7 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
         </div>
       </div>
 
-      <form className="card grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]" method="get">
+      <form className="card grid gap-3 sm:grid-cols-[1fr_auto_auto_auto_auto]" method="get">
         <input name="q" className="input" placeholder="Buscar por nombre, documento, teléfono o correo" defaultValue={q} />
         <select name="estado" className="input sm:w-44" defaultValue={estado}>
           <option value="">Todos los estados</option>
@@ -78,6 +81,11 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
             </option>
           ))}
         </select>
+        <select name="requisito" className="input sm:w-52" defaultValue={requisito}>
+          <option value="">Todos los requisitos</option>
+          {hasTerms ? <option value="condiciones">Condiciones pendientes</option> : null}
+          <option value="aporte">Aporte pendiente</option>
+        </select>
         <button type="submit" className="btn-primary">
           Filtrar
         </button>
@@ -94,18 +102,19 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
               <th>Documento</th>
               <th>Rol</th>
               <th>Logística</th>
+              <th>Requisitos</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-10 text-center text-slate-500">
+                <td colSpan={9} className="py-10 text-center text-slate-500">
                   No hay inscripciones con esos criterios.
                 </td>
               </tr>
             ) : (
-              rows.map(({ registration: r, volunteer: v, organization: o }) => (
+              rows.map(({ registration: r, volunteer: v, organization: o, termsAcceptedAt }) => (
                 <tr key={r.id} className="hover:bg-slate-50">
                   <td>
                     <StatusBadge status={r.status} />
@@ -139,6 +148,20 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
                     <div>{labelOf(TRANSPORT, r.transport)}</div>
                     <div>{labelOf(AVAILABILITY, r.availability)}</div>
                     {r.availabilityNotes ? <div className="text-slate-400">{r.availabilityNotes}</div> : null}
+                  </td>
+                  <td className="space-y-1 whitespace-nowrap">
+                    {hasTerms ? (
+                      <div>
+                        <span className={termsAcceptedAt ? "badge-confirmado" : "badge-lista_espera"}>
+                          {termsAcceptedAt ? "Condiciones ✓" : "Condiciones pendientes"}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div>
+                      <span className={r.paymentStatus === "pagado" || r.paymentStatus === "exento" ? "badge-confirmado" : "badge-lista_espera"}>
+                        Aporte: {labelOf(PAYMENT_STATUS, r.paymentStatus).toLowerCase()}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <Link href={`/admin/participantes/${r.id}`} className="btn-ghost px-2 py-1 text-xs">

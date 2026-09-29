@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Field } from "@/components/ui";
-import { REGISTRATION_STATUS, ROLES } from "@/lib/catalogs";
+import { PAYMENT_STATUS, REGISTRATION_STATUS, ROLES } from "@/lib/catalogs";
 import type { MissionRegistration, Organization, Volunteer } from "@/lib/db/schema";
 import { updateParticipant, type ParticipantFormState } from "./actions";
 
@@ -43,6 +43,24 @@ export function ParticipantForm({ registration, volunteer, organizations }: Prop
       <Field label="Notas internas del equipo" htmlFor="adminNotes" error={errors.adminNotes}>
         <textarea id="adminNotes" name="adminNotes" rows={3} className={cls("adminNotes")} defaultValue={registration.adminNotes ?? ""} />
       </Field>
+      <h3 className="pt-2 text-sm font-semibold text-slate-700">Aporte económico</h3>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Estado del aporte" htmlFor="paymentStatus" error={errors.paymentStatus} required>
+          <select id="paymentStatus" name="paymentStatus" className={cls("paymentStatus")} defaultValue={registration.paymentStatus}>
+            {PAYMENT_STATUS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Valor recibido (COP)" htmlFor="paymentAmount" error={errors.paymentAmount}>
+          <input id="paymentAmount" name="paymentAmount" type="number" min={0} step={1000} className={cls("paymentAmount")} defaultValue={registration.paymentAmount ?? ""} />
+        </Field>
+        <Field label="Referencia / nota" htmlFor="paymentNotes" error={errors.paymentNotes}>
+          <input id="paymentNotes" name="paymentNotes" className={cls("paymentNotes")} defaultValue={registration.paymentNotes ?? ""} placeholder="Transferencia 29/09" />
+        </Field>
+      </div>
       <h3 className="pt-2 text-sm font-semibold text-slate-700">Datos de contacto</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre completo" htmlFor="fullName" error={errors.fullName} required>

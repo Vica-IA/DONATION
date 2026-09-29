@@ -1,7 +1,10 @@
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import type { Db } from "./index";
 import { missions, organizations, users } from "./schema";
 import { DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, hashPassword } from "../password";
+import { KAIROS_ETAPA2_DECLARATIONS, KAIROS_ETAPA2_TERMS_MARKDOWN, KAIROS_ETAPA2_TERMS_VERSION } from "../terms/kairos-etapa2";
+
+const SEED_MISSION_CODE = "CHO-2026-01";
 
 /**
  * Datos iniciales del primer caso de uso (Misión Chocó). Solo se insertan si
@@ -20,19 +23,38 @@ export async function seedIfEmpty(db: Db) {
   if (missionCount === 0) {
     await db.insert(missions).values({
       id: crypto.randomUUID(),
-      code: "CHO-2026-01",
+      code: SEED_MISSION_CODE,
       slug: "choco-2026-01",
       name: "Misión Chocó 01",
       description:
         "Primera misión de campo de DONATION: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: KAIROS Life y PALPITOS.",
-      location: "Chocó, Colombia (territorio por confirmar: Quibdó, Tadó, Ánimas o Puerto Meluk)",
+      location: "Chocó, Colombia (Tadó, Istmina y comunidades cercanas a Puerto Meluk; por confirmar)",
       startDate: "2026-10-09",
       endDate: "2026-10-12",
       capacity: 40,
       status: "convocatoria",
       registrationOpen: true,
       meetingPoint: "Medellín (punto y hora por confirmar)",
+      contributionAmount: 400000,
+      termsMarkdown: KAIROS_ETAPA2_TERMS_MARKDOWN,
+      termsDeclarations: KAIROS_ETAPA2_DECLARATIONS.join("\n"),
+      termsVersion: KAIROS_ETAPA2_TERMS_VERSION,
+      termsImageConsent: true,
     });
+  }
+
+  // Bases creadas antes de existir las condiciones: cargar el documento inicial una sola vez.
+  const seeded = (await db.select().from(missions).where(eq(missions.code, SEED_MISSION_CODE)).limit(1))[0];
+  if (seeded && !seeded.termsMarkdown) {
+    await db
+      .update(missions)
+      .set({
+        termsMarkdown: KAIROS_ETAPA2_TERMS_MARKDOWN,
+        termsDeclarations: KAIROS_ETAPA2_DECLARATIONS.join("\n"),
+        termsVersion: KAIROS_ETAPA2_TERMS_VERSION,
+        contributionAmount: seeded.contributionAmount ?? 400000,
+      })
+      .where(eq(missions.id, seeded.id));
   }
 }
 

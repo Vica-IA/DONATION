@@ -8,6 +8,8 @@ Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Chocó
 - **Formulario público** para confirmar participación: `/misiones/choco-2026-01/confirmar` (pensado para celular).
 - **Cupos y lista de espera** automáticos; sin registros duplicados (una persona = un documento).
 - **Panel del equipo** en `/admin`: conteos, desglose por grupo/rol/logística, lista con filtros, ficha por persona, historial, CSV para Excel y enlace para compartir por WhatsApp.
+- **Condiciones de participación**: tras confirmar, cada persona lee el consentimiento informado de la misión, marca las casillas, indica si autoriza el uso de su imagen y firma. Queda registro de fecha, versión y texto aceptado. El documento se edita por misión desde el panel.
+- **Aporte y requisitos de viaje**: seguimiento del aporte económico por persona, vacuna de fiebre amarilla, póliza de accidentes y contacto de emergencia completo.
 - **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña. Roles: administrador (todo), coordinador de misión (gestiona participantes, ve datos de salud, exporta) y solo consulta (lectura sin datos sensibles).
 - **Varias misiones**: crea y edita misiones desde el panel.
 
@@ -76,7 +78,8 @@ La matriz de permisos vive en `src/lib/permissions.ts`. Las contraseñas se guar
 src/app/                      rutas (App Router)
   page.tsx                    inicio público: convocatorias abiertas
   misiones/[slug]/confirmar   formulario público + acción de servidor
-  misiones/[slug]/gracias     confirmación de envío
+  misiones/[slug]/gracias     confirmación de envío (enlaza al paso 2)
+  misiones/[slug]/condiciones/[id]  lectura y aceptación de las condiciones de participación
   admin/                      panel (login, dashboard, misiones, participantes, CSV, usuarios, mi cuenta)
 src/lib/
   catalogs.ts                 opciones del formulario (roles, habilidades, estados...)
@@ -86,9 +89,10 @@ src/lib/
   users.ts, password.ts       usuarios del panel y contraseñas (scrypt)
   permissions.ts              roles y permisos
   db/                         esquema Drizzle, migraciones SQL y semilla
+  terms/                      texto inicial de las condiciones de participación (semilla)
 src/proxy.ts                  protege /admin antes de llegar a las páginas
 scripts/smoke.ts              prueba de extremo a extremo con Playwright
-docs/                         documentos de gobierno y planes del proyecto
+docs/                         documentos del proyecto (índice en docs/README.md)
 ```
 
 ## Principios que respeta este MVP

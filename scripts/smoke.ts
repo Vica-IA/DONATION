@@ -57,6 +57,10 @@ async function main() {
     await page.selectOption("#bloodType", "O+");
     await page.fill("#emergencyContactName", "Ana Pérez");
     await page.fill("#emergencyContactPhone", "3001112233");
+    await page.fill("#emergencyContactRelationship", "Madre");
+    await page.fill("#emergencyContactPhone2", "3009998877");
+    await page.fill("#yellowFeverVaccineDate", "2026-09-20");
+    await page.fill("#accidentInsurance", "Sura · póliza 12345");
     await page.fill("#dietaryNotes", "Sin gluten");
     await page.getByLabel("Carpintería").check();
     await page.getByLabel("Primeros auxilios").check();
@@ -72,7 +76,44 @@ async function main() {
   let url = await fill({ name: "Juan Prueba Uno", doc: "1000000001", attendance: "Sí, confirmo", phone: "3001000001" });
   assert.equal(url.searchParams.get("estado"), "confirmado");
   assert.match((await page.textContent("h1")) ?? "", /Juan: ¡Tu cupo está confirmado!/);
+  const registrationId = url.searchParams.get("r");
+  assert.ok(registrationId, "la página de gracias recibe el id de inscripción");
   console.log("✓ inscripción confirmada");
+
+  // 3b. Paso 2: condiciones de participación
+  await page.getByRole("link", { name: "Leer y aceptar las condiciones" }).click();
+  await page.waitForURL(`**/misiones/${SLUG}/condiciones/${registrationId}`);
+  let termsBody = (await page.textContent("body")) ?? "";
+  assert.match(termsBody, /CONSENTIMIENTO INFORMADO Y CONDICIONES DE PARTICIPACIÓN/);
+  assert.match(termsBody, /DECLARACIÓN FINAL DE ACEPTACIÓN/);
+  assert.match(termsBody, /Autorización de uso de imagen/);
+  const boxes = page.locator('input[name="declarations"]');
+  assert.equal(await boxes.count(), 17, "17 casillas de aceptación");
+  // enviar incompleto: sin casillas, nombre distinto
+  await page.fill("#signedName", "Otro Nombre");
+  await page.fill("#signedCity", "Medellín");
+  await page.getByRole("button", { name: "Acepto las condiciones de participación" }).click();
+  await page.getByText(/Debes marcar todas las casillas/).waitFor();
+  assert.match((await page.textContent("body")) ?? "", /Indica si autorizas o no el uso de tu imagen/);
+  assert.match((await page.textContent("body")) ?? "", /Escribe tu nombre exactamente como lo registraste/);
+  // completar
+  for (let i = 0; i < 17; i++) await page.locator('input[name="declarations"]').nth(i).check();
+  await page.getByLabel("SÍ autorizo").check();
+  await page.fill("#signedName", "juan prueba uno"); // sin mayúsculas: se normaliza
+  await page.fill("#signedCity", "Medellín");
+  await page.getByRole("button", { name: "Acepto las condiciones de participación" }).click();
+  await page.waitForURL("**/condiciones/**?ok=1");
+  termsBody = (await page.textContent("body")) ?? "";
+  assert.match(termsBody, /¡Gracias! Condiciones aceptadas/);
+  assert.match(termsBody, /versión 1/);
+  assert.match(termsBody, /Autorizaste el uso de tu imagen/);
+  // volver a entrar: ya aceptadas
+  await page.goto(`${BASE}/misiones/${SLUG}/condiciones/${registrationId}`);
+  assert.match((await page.textContent("body")) ?? "", /Ya aceptaste estas condiciones/);
+  // enlace ajeno: inscripción inexistente → 404
+  const bad = await page.goto(`${BASE}/misiones/${SLUG}/condiciones/00000000-0000-0000-0000-000000000000`);
+  assert.equal(bad?.status(), 404);
+  console.log("✓ condiciones de participación: validación, aceptación, evidencia y 404");
 
   url = await fill({ name: "María Prueba Dos", doc: "1000000002", attendance: "Todavía no estoy", phone: "3001000002" });
   assert.equal(url.searchParams.get("estado"), "pendiente");
@@ -127,13 +168,42 @@ async function main() {
   await page.selectOption("#status", "confirmado");
   await page.selectOption("#assignedRole", "logistica");
   await page.fill("#adminNotes", "Nota interna de prueba");
+  await page.selectOption("#paymentStatus", "pagado");
+  await page.fill("#paymentAmount", "400000");
+  await page.fill("#paymentNotes", "Transferencia de prueba");
   await page.getByRole("button", { name: "Guardar" }).click();
   await page.getByText("Cambios guardados.").waitFor();
   await page.reload();
   const detail = (await page.textContent("body")) ?? "";
   assert.match(detail, /estado pendiente → confirmado/);
+  assert.match(detail, /aporte pendiente → pagado/);
   assert.match(detail, /Nota interna de prueba/);
-  console.log("✓ gestión de participante (estado, rol, notas, historial)");
+  assert.match(detail, /Pagado · \$\s?400\.000/);
+  assert.match(detail, /Condiciones de participación/);
+  assert.match(detail, /Pendientes \(versión vigente 1\)/); // María no ha aceptado
+  assert.match(detail, /Madre|Sin registrar/); // ficha con requisitos
+  console.log("✓ gestión de participante (estado, rol, notas, aporte, historial)");
+
+  // 7b. Ficha de Juan: condiciones aceptadas, enlace personal y filtro de pendientes
+  await page.goto(`${BASE}/admin/participantes/${registrationId}`);
+  const juan = (await page.textContent("body")) ?? "";
+  assert.match(juan, /Aceptadas el .* \(versión 1\)/);
+  assert.match(juan, /Autoriza uso de imagen/);
+  assert.match(juan, /Madre/);
+  assert.match(juan, /Sura · póliza 12345/);
+  assert.match(juan, new RegExp(`/misiones/${SLUG}/condiciones/${registrationId}`));
+  await page.goto(`${BASE}/admin`);
+  await page.getByRole("link", { name: "Ver participantes" }).first().click();
+  let list = (await page.textContent("body")) ?? "";
+  assert.match(list, /condiciones aceptadas 1\/2/);
+  assert.match(list, /aporte pagado 1\/2/);
+  await page.selectOption('select[name="requisito"]', "condiciones");
+  await page.getByRole("button", { name: "Filtrar" }).click();
+  await page.waitForURL("**requisito=condiciones**");
+  list = (await page.textContent("body")) ?? "";
+  assert.match(list, /María Prueba Dos/);
+  assert.doesNotMatch(list, /Juan Prueba Uno/);
+  console.log("✓ panel: condiciones aceptadas, enlace personal, filtro de pendientes");
 
   // 8. CSV
   const missionId = new URL(page.url()).pathname; // no lo usamos; volvemos por el dashboard
@@ -148,14 +218,23 @@ async function main() {
   assert.match(lines[0], /^Estado;Nombre completo;/);
   assert.match(csv, /Juan Prueba Uno/);
   assert.match(csv, /Carpintería, Primeros auxilios/);
+  assert.match(lines[0], /Condiciones aceptadas el;Autoriza imagen/);
+  assert.match(csv, /;Sí;/); // Juan autoriza imagen
+  assert.match(csv, /Sura · póliza 12345/);
   console.log("✓ exportación CSV");
 
   // 9. Cupos: bajar capacidad a 2 y confirmar una tercera persona → lista de espera
   await page.getByRole("link", { name: "Editar", exact: true }).first().click();
   await page.waitForURL("**/editar");
   await page.fill("#capacity", "2");
+  await page.fill("#termsVersion", "2");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await page.waitForURL(/\/admin\/misiones\/[^/]+$/);
+  await page.goto(`${BASE}/admin/participantes/${registrationId}`);
+  const juanV2 = (await page.textContent("body")) ?? "";
+  assert.match(juanV2, /Pendientes \(versión vigente 2\)/);
+  assert.match(juanV2, /Aceptó una versión anterior \(v1\)/);
+  console.log("✓ subir la versión de las condiciones exige aceptarlas de nuevo");
   url = await fill({ name: "Pedro Prueba Tres", doc: "1000000003", attendance: "Sí, confirmo", phone: "3001000003" });
   assert.equal(url.searchParams.get("estado"), "lista_espera");
   console.log("✓ lista de espera al agotar cupos");

@@ -18,6 +18,7 @@ export function MissionForm({ mission }: { mission: Mission | null }) {
   };
   const cls = (key: string) => `input${errors[key] ? " input-error" : ""}`;
   const openDefault = values.registrationOpen !== undefined ? values.registrationOpen === true : (mission?.registrationOpen ?? true);
+  const imageConsentDefault = values.termsImageConsent !== undefined ? values.termsImageConsent === true : (mission?.termsImageConsent ?? true);
 
   return (
     <form action={formAction} className="card space-y-5" noValidate>
@@ -61,6 +62,9 @@ export function MissionForm({ mission }: { mission: Mission | null }) {
           <input id="contactPhone" name="contactPhone" className={cls("contactPhone")} defaultValue={v("contactPhone")} />
         </Field>
       </div>
+      <Field label="Aporte por persona (COP)" htmlFor="contributionAmount" error={errors.contributionAmount} help="Informativo: se muestra en el formulario. Vacío = no se menciona.">
+        <input id="contributionAmount" name="contributionAmount" type="number" min={0} step={1000} className={cls("contributionAmount")} defaultValue={v("contributionAmount")} />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Estado" htmlFor="status" error={errors.status} required>
           <select id="status" name="status" className={cls("status")} defaultValue={v("status") || "convocatoria"}>
@@ -75,6 +79,30 @@ export function MissionForm({ mission }: { mission: Mission | null }) {
           <input type="checkbox" name="registrationOpen" defaultChecked={openDefault} className="mt-0.5" />
           <span>Inscripciones abiertas (el formulario público acepta respuestas)</span>
         </label>
+      </div>
+      <div className="space-y-4 border-t border-slate-200 pt-5">
+        <div>
+          <h2 className="section-title">Condiciones de participación</h2>
+          <p className="text-sm text-slate-500">
+            Documento que cada persona confirmada debe leer y aceptar (consentimiento informado). Se escribe en Markdown: <code>#</code> títulos,{" "}
+            <code>**negrita**</code>, listas con <code>-</code>.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Versión del documento" htmlFor="termsVersion" error={errors.termsVersion} required help="Súbela cuando el texto cambie de fondo: todos deberán aceptarlo de nuevo.">
+            <input id="termsVersion" name="termsVersion" type="number" min={1} className={cls("termsVersion")} defaultValue={v("termsVersion") || "1"} />
+          </Field>
+          <label className="choice self-end">
+            <input type="checkbox" name="termsImageConsent" defaultChecked={imageConsentDefault} className="mt-0.5" />
+            <span>Preguntar autorización de uso de imagen (SÍ / NO) al aceptar</span>
+          </label>
+        </div>
+        <Field label="Casillas de aceptación (una por línea)" htmlFor="termsDeclarations" error={errors.termsDeclarations} help="Cada línea es una casilla obligatoria al final del documento.">
+          <textarea id="termsDeclarations" name="termsDeclarations" rows={8} className={cls("termsDeclarations")} defaultValue={v("termsDeclarations")} />
+        </Field>
+        <Field label="Texto del documento (Markdown)" htmlFor="termsMarkdown" error={errors.termsMarkdown} help="Vacío = la misión no pide condiciones.">
+          <textarea id="termsMarkdown" name="termsMarkdown" rows={18} className={`${cls("termsMarkdown")} font-mono text-xs`} defaultValue={v("termsMarkdown")} />
+        </Field>
       </div>
       <div className="flex gap-2">
         <button type="submit" className="btn-primary" disabled={pending}>

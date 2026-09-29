@@ -11,7 +11,7 @@ export type MissionFormState = { errors: FieldErrors; values: Record<string, unk
 
 export async function saveMission(id: string | null, _prev: MissionFormState, formData: FormData): Promise<MissionFormState> {
   const user = await requirePermission("missions.manage", id ? `/admin/misiones/${id}/editar` : "/admin/misiones/nueva");
-  const raw = formToObject(formData, [], ["registrationOpen"]);
+  const raw = formToObject(formData, [], ["registrationOpen", "termsImageConsent"]);
   const parsed = missionSchema.safeParse(raw);
   if (!parsed.success) return { errors: flattenErrors(parsed.error), values: raw };
 

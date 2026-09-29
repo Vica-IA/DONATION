@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CopyButton } from "@/components/copy-button";
 import { StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { ATTENDANCE, AVAILABILITY, BLOOD_TYPES, DOC_TYPES, ROLES, SKILLS, TRANSPORT, labelOf } from "@/lib/catalogs";
-import { getRegistration, listOrganizations } from "@/lib/data";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { ATTENDANCE, AVAILABILITY, BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, ROLES, SKILLS, TRANSPORT, labelOf } from "@/lib/catalogs";
+import { siteUrl } from "@/lib/config";
+import { getRegistration, listOrganizations, missionHasTerms } from "@/lib/data";
+import { formatCOP, formatDate, formatDateTime } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { ParticipantForm } from "./form";
 
@@ -12,6 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   creada: "Inscripción creada",
   actualizada_por_persona: "Actualizada por la persona",
   actualizada_por_admin: "Actualizada por el equipo",
+  condiciones_aceptadas: "Condiciones aceptadas",
 };
 
 export default async function ParticipantPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +24,11 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
   const canSeeSensitive = can(user.role, "participants.sensitive");
   const [detail, organizations] = await Promise.all([getRegistration(id), listOrganizations()]);
   if (!detail) notFound();
-  const { registration: r, volunteer: v, organization: o, mission, activity } = detail;
+  const { registration: r, volunteer: v, organization: o, mission, activity, termsAcceptance, acceptances } = detail;
+  const termsUrl = `${siteUrl()}/misiones/${mission.slug}/condiciones/${r.id}`;
+  const waTerms = `https://wa.me/${v.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+    `Hola ${v.fullName.split(" ")[0]}, para completar tu cupo en ${mission.name} lee y acepta las condiciones de participación aquí: ${termsUrl}`,
+  )}`;
   let skills: string[] = [];
   try {
     skills = JSON.parse(v.skills);
@@ -42,6 +49,7 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
     ["Habilidades", skills.length ? skills.map((s) => labelOf(SKILLS, s)).join(", ") : "—"],
     ["Experiencia en obra", v.constructionExperience ? "Sí" : "No"],
     ["Talla camiseta", v.shirtSize ?? "—"],
+    ["Aporte", `${labelOf(PAYMENT_STATUS, r.paymentStatus)}${r.paymentAmount ? ` · ${formatCOP(r.paymentAmount)}` : ""}${r.paymentNotes ? ` · ${r.paymentNotes}` : ""}`],
     ["Comentarios", r.comments ?? "—"],
     ["Registrado", formatDateTime(r.createdAt)],
     ["Confirmado", r.confirmedAt ? formatDateTime(r.confirmedAt) : "—"],
@@ -51,7 +59,9 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
   const sensitiveRows: [string, React.ReactNode][] = [
     ["EPS", v.eps ?? "—"],
     ["RH", labelOf(BLOOD_TYPES, v.bloodType) || "—"],
-    ["Contacto de emergencia", `${v.emergencyContactName ?? "—"} · ${v.emergencyContactPhone ?? ""}`],
+    ["Contacto de emergencia", `${v.emergencyContactName ?? "—"}${v.emergencyContactRelationship ? ` (${v.emergencyContactRelationship})` : ""} · ${v.emergencyContactPhone ?? ""}${v.emergencyContactPhone2 ? ` · ${v.emergencyContactPhone2}` : ""}`],
+    ["Vacuna fiebre amarilla", v.yellowFeverVaccineDate ? formatDate(v.yellowFeverVaccineDate) : "Sin registrar"],
+    ["Póliza de accidentes", v.accidentInsurance ?? "Sin registrar"],
     ["Condiciones médicas", v.medicalNotes ?? "—"],
     ["Alimentación", v.dietaryNotes ?? "—"],
   ];
@@ -87,6 +97,32 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
           </section>
         )}
         <div className="space-y-6">
+          {missionHasTerms(mission) ? (
+            <section className="card">
+              <h2 className="section-title">Condiciones de participación</h2>
+              {termsAcceptance ? (
+                <div className="mt-2 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+                  <p className="font-semibold">Aceptadas el {formatDateTime(termsAcceptance.acceptedAt)} (versión {termsAcceptance.termsVersion})</p>
+                  <p className="mt-1">
+                    Firmó: {termsAcceptance.signedName} · {termsAcceptance.signedCity}
+                    {termsAcceptance.imageConsent === null ? "" : termsAcceptance.imageConsent ? " · Autoriza uso de imagen" : " · NO autoriza uso de imagen"}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-semibold">Pendientes (versión vigente {mission.termsVersion})</p>
+                  {acceptances.length > 0 ? <p className="mt-1">Aceptó una versión anterior (v{acceptances[0].termsVersion}) el {formatDateTime(acceptances[0].acceptedAt)}.</p> : null}
+                </div>
+              )}
+              <p className="mt-3 break-all font-mono text-xs text-slate-500">{termsUrl}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <CopyButton text={termsUrl} label="Copiar enlace" />
+                <a className="btn-accent" href={waTerms} target="_blank" rel="noopener noreferrer">
+                  Enviar por WhatsApp
+                </a>
+              </div>
+            </section>
+          ) : null}
           <section className="card">
             <h2 className="section-title">Ficha</h2>
             <dl className="mt-3 divide-y divide-slate-100 text-sm">
