@@ -1,6 +1,6 @@
 /**
  * Prueba de humo de extremo a extremo (Playwright + Chromium).
- * Uso: BASE_URL=http://localhost:3000 ADMIN_PASSWORD=xxx npx tsx scripts/smoke.ts
+ * Uso: BASE_URL=http://localhost:3000 ADMIN_EMAIL=... ADMIN_PASSWORD=... npx tsx scripts/smoke.ts
  * Requiere un servidor corriendo con base de datos limpia (o al menos la misión semilla).
  */
 import { chromium } from "playwright";
@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@donation.local";
 const PASSWORD = process.env.ADMIN_PASSWORD ?? "donation2026";
 const SLUG = "choco-2026-01";
 const exe = process.env.CHROMIUM_PATH ?? (fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
@@ -86,18 +87,28 @@ async function main() {
   await page.goto(`${BASE}/misiones/${SLUG}/confirmar`);
   assert.match((await page.textContent("body")) ?? "", /1 de 40 cupos confirmados/);
 
-  // 5. Panel: requiere login
+  // 5. Panel: requiere login con correo y contraseña
+  const loginAs = async (email: string, password: string) => {
+    await page.goto(`${BASE}/admin/login`);
+    await page.fill("#email", email);
+    await page.fill("#password", password);
+    await page.getByRole("button", { name: "Entrar" }).click();
+  };
+  const logoutNow = async () => {
+    await page.goto(`${BASE}/admin`);
+    await page.getByRole("button", { name: "Salir" }).click();
+    await page.waitForURL("**/admin/login**");
+  };
   await page.goto(`${BASE}/admin`);
   await page.waitForURL("**/admin/login**");
-  await page.fill("#password", "incorrecta");
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await page.getByText("Contraseña incorrecta.").waitFor();
-  await page.fill("#password", PASSWORD);
-  await page.getByRole("button", { name: "Entrar" }).click();
+  await loginAs(ADMIN_EMAIL, "incorrecta");
+  await page.getByText("Correo o contraseña incorrectos.").waitFor();
+  await loginAs(ADMIN_EMAIL, PASSWORD);
   await page.waitForURL(`${BASE}/admin`);
   const dash = (await page.textContent("body")) ?? "";
   assert.match(dash, /Misión Chocó 01/);
   assert.match(dash, /KAIROS Life\s*1 \/ 2/);
+  assert.match(dash, /Administrador/);
   console.log("✓ login y dashboard con conteos por grupo");
 
   // 6. Lista de participantes + filtro
@@ -159,10 +170,101 @@ async function main() {
   assert.match((await page.textContent("body")) ?? "", /Inscripciones cerradas/);
   console.log("✓ cierre de inscripciones");
 
-  // 11. Salir
+  // 11. Usuarios: crear coordinador con contraseña temporal
+  await page.goto(`${BASE}/admin/usuarios`);
+  assert.match((await page.textContent("body")) ?? "", /Usuarios del panel/);
+  await page.getByRole("link", { name: "+ Nuevo usuario" }).click();
+  await page.waitForURL("**/admin/usuarios/nuevo");
+  await page.fill("#name", "Carolina Coordinadora");
+  await page.fill("#email", "coordinadora@prueba.local");
+  await page.selectOption("#role", "coordinador");
+  await page.getByRole("button", { name: "Crear usuario" }).click();
+  await page.getByText("Credenciales temporales").waitFor();
+  const tempPassword = (await page.locator("code.font-bold").textContent())?.trim();
+  assert.ok(tempPassword && tempPassword.length >= 8, "debe mostrar la contraseña temporal");
+  // duplicado por correo
+  await page.goto(`${BASE}/admin/usuarios/nuevo`);
+  await page.fill("#name", "Otra");
+  await page.fill("#email", "coordinadora@prueba.local");
+  await page.getByRole("button", { name: "Crear usuario" }).click();
+  await page.getByText("Ya existe un usuario con ese correo.").waitFor();
+  // consulta con contraseña definida
+  await page.goto(`${BASE}/admin/usuarios/nuevo`);
+  await page.fill("#name", "Luis Lector");
+  await page.fill("#email", "lector@prueba.local");
+  await page.selectOption("#role", "consulta");
+  await page.fill("#password", "lectura-2026");
+  await page.getByRole("button", { name: "Crear usuario" }).click();
+  await page.getByText("Credenciales temporales").waitFor();
+  // el admin no puede desactivarse a sí mismo (checkbox deshabilitado)
+  await page.goto(`${BASE}/admin/usuarios`);
+  const rowsText = (await page.textContent("body")) ?? "";
+  assert.match(rowsText, /Carolina Coordinadora/);
+  assert.match(rowsText, /Luis Lector/);
+  assert.match(rowsText, /\(tú\)/);
+  console.log("✓ creación de usuarios (coordinador y consulta), correo duplicado rechazado");
+
+  // 12. Coordinador: cambio obligatorio de contraseña y permisos
+  await logoutNow();
+  await loginAs("coordinadora@prueba.local", tempPassword!);
+  await page.waitForURL("**/admin/cuenta?obligatorio=1");
   await page.goto(`${BASE}/admin`);
-  await page.getByRole("button", { name: "Salir" }).click();
-  await page.waitForURL("**/admin/login**");
+  await page.waitForURL("**/admin/cuenta?obligatorio=1"); // bloqueada hasta cambiar
+  await page.fill("#currentPassword", tempPassword!);
+  await page.fill("#newPassword", "coordina-2026");
+  await page.fill("#confirmPassword", "coordina-2026");
+  await page.getByRole("button", { name: "Cambiar contraseña" }).click();
+  await page.waitForURL("**/admin?cuenta=ok");
+  let body = (await page.textContent("body")) ?? "";
+  assert.match(body, /Contraseña actualizada/);
+  assert.match(body, /Coordinador de misión/);
+  assert.doesNotMatch(body, /\+ Nueva misión/);
+  assert.equal(await page.getByRole("link", { name: "Usuarios" }).count(), 0);
+  await page.goto(`${BASE}/admin/usuarios`);
+  await page.waitForURL("**/admin?denegado=1");
+  assert.match((await page.textContent("body")) ?? "", /No tienes permiso/);
+  await page.goto(`${BASE}/admin/misiones/nueva`);
+  await page.waitForURL("**/admin?denegado=1");
+  // sí puede gestionar participantes y ver salud
+  await page.getByRole("link", { name: "Ver participantes" }).first().click();
+  await page.getByRole("link", { name: "Gestionar" }).first().click();
+  await page.waitForURL("**/admin/participantes/**");
+  body = (await page.textContent("body")) ?? "";
+  assert.match(body, /Ana Pérez/); // contacto de emergencia visible
+  assert.ok(await page.locator("#status").isVisible());
+  // la contraseña temporal ya no sirve (sesión anterior invalidada)
+  await logoutNow();
+  await loginAs("coordinadora@prueba.local", tempPassword!);
+  await page.getByText("Correo o contraseña incorrectos.").waitFor();
+  console.log("✓ coordinador: cambio obligatorio de contraseña, permisos correctos");
+
+  // 13. Consulta: solo lectura, sin datos sensibles ni CSV
+  await loginAs("lector@prueba.local", "lectura-2026");
+  await page.waitForURL("**/admin/cuenta?obligatorio=1");
+  await page.fill("#currentPassword", "lectura-2026");
+  await page.fill("#newPassword", "lectura-nueva-2026");
+  await page.fill("#confirmPassword", "lectura-nueva-2026");
+  await page.getByRole("button", { name: "Cambiar contraseña" }).click();
+  await page.waitForURL("**/admin?cuenta=ok");
+  body = (await page.textContent("body")) ?? "";
+  assert.doesNotMatch(body, /Descargar CSV/);
+  assert.doesNotMatch(body, /\+ Nueva misión/);
+  await page.getByRole("link", { name: "Ver participantes" }).first().click();
+  body = (await page.textContent("body")) ?? "";
+  assert.doesNotMatch(body, /Descargar CSV/);
+  await page.getByRole("link", { name: "Ver", exact: true }).first().click();
+  await page.waitForURL("**/admin/participantes/**");
+  body = (await page.textContent("body")) ?? "";
+  assert.match(body, /solo consulta/);
+  assert.match(body, /Información reservada/);
+  assert.doesNotMatch(body, /Ana Pérez/);
+  assert.equal(await page.locator("#status").count(), 0);
+  const exportResp = await page.request.get(`${BASE}/admin/misiones/x/export`);
+  assert.equal(exportResp.status(), 403); // autenticado, pero el rol consulta no exporta
+  console.log("✓ consulta: solo lectura, sin salud ni exportación");
+
+  // 14. Salir y protección de exportación sin sesión
+  await logoutNow();
   await page.goto(`${BASE}/admin/misiones/x/export`);
   assert.match((await page.textContent("body")) ?? "", /No autorizado|login/);
   console.log("✓ logout y protección de exportación");

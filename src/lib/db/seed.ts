@@ -1,6 +1,7 @@
 import { count } from "drizzle-orm";
 import type { Db } from "./index";
-import { missions, organizations } from "./schema";
+import { missions, organizations, users } from "./schema";
+import { DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, hashPassword } from "../password";
 
 /**
  * Datos iniciales del primer caso de uso (Misión Chocó). Solo se insertan si
@@ -33,4 +34,36 @@ export async function seedIfEmpty(db: Db) {
       meetingPoint: "Medellín (punto y hora por confirmar)",
     });
   }
+}
+
+/**
+ * Crea el primer administrador si no existe ningún usuario.
+ * - Producción: toma ADMIN_EMAIL y ADMIN_PASSWORD del entorno.
+ * - Desarrollo: si no están definidos, usa las credenciales de desarrollo.
+ */
+export async function ensureBootstrapAdmin(db: Db) {
+  const [{ value: userCount }] = await db.select({ value: count() }).from(users);
+  if (userCount > 0) return;
+
+  const isProd = process.env.NODE_ENV === "production";
+  const email = (process.env.ADMIN_EMAIL ?? (isProd ? "" : DEV_ADMIN_EMAIL)).trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD ?? (isProd ? "" : DEV_ADMIN_PASSWORD);
+  if (!email || !password) {
+    console.warn(
+      "DONATION: no hay usuarios del panel. Define ADMIN_EMAIL y ADMIN_PASSWORD en el entorno para crear el primer administrador.",
+    );
+    return;
+  }
+
+  await db.insert(users).values({
+    id: crypto.randomUUID(),
+    email,
+    name: process.env.ADMIN_NAME ?? "Administrador",
+    role: "admin",
+    passwordHash: await hashPassword(password),
+    active: true,
+    // Las credenciales de desarrollo son públicas: no obligan a cambiarlas.
+    mustChangePassword: false,
+  });
+  console.info(`DONATION: administrador inicial creado (${email}).`);
 }

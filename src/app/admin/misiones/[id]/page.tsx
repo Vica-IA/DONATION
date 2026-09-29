@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { AVAILABILITY, REGISTRATION_STATUS, ROLES, TRANSPORT, labelOf } from "@/lib/catalogs";
 import { getMissionById, getMissionStats, listOrganizations, listRegistrations } from "@/lib/data";
 import { formatDateRange } from "@/lib/format";
+import { can } from "@/lib/permissions";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -13,7 +14,10 @@ type Props = {
 
 export default async function MissionParticipantsPage({ params, searchParams }: Props) {
   const { id } = await params;
-  await requireAdmin(`/admin/misiones/${id}`);
+  const user = await requireUser(`/admin/misiones/${id}`);
+  const canExport = can(user.role, "participants.export");
+  const canManage = can(user.role, "participants.manage");
+  const canEditMission = can(user.role, "missions.manage");
   const mission = await getMissionById(id);
   if (!mission) notFound();
   const { q = "", estado = "", grupo = "" } = await searchParams;
@@ -43,12 +47,16 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={`/admin/misiones/${mission.id}/export`} className="btn-secondary">
-            Descargar CSV
-          </a>
-          <Link href={`/admin/misiones/${mission.id}/editar`} className="btn-secondary">
-            Editar misión
-          </Link>
+          {canExport ? (
+            <a href={`/admin/misiones/${mission.id}/export`} className="btn-secondary">
+              Descargar CSV
+            </a>
+          ) : null}
+          {canEditMission ? (
+            <Link href={`/admin/misiones/${mission.id}/editar`} className="btn-secondary">
+              Editar misión
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -134,7 +142,7 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
                   </td>
                   <td>
                     <Link href={`/admin/participantes/${r.id}`} className="btn-ghost px-2 py-1 text-xs">
-                      Gestionar
+                      {canManage ? "Gestionar" : "Ver"}
                     </Link>
                   </td>
                 </tr>

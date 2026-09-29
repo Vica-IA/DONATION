@@ -10,8 +10,11 @@ import {
   SHIRT_SIZES,
   SKILLS,
   TRANSPORT,
+  USER_ROLES,
   values,
 } from "./catalogs";
+
+export const PASSWORD_MIN_LENGTH = 8;
 
 const trimmed = (max: number) => z.string().trim().max(max);
 const optionalText = (max: number) =>
@@ -106,6 +109,41 @@ export const missionSchema = z
   });
 
 export type MissionInput = z.infer<typeof missionSchema>;
+
+const email = z.string().trim().toLowerCase().email("Correo inválido").max(120);
+const password = z.string().min(PASSWORD_MIN_LENGTH, `Mínimo ${PASSWORD_MIN_LENGTH} caracteres`).max(200);
+
+export const loginSchema = z.object({
+  email,
+  password: z.string().min(1, "Escribe tu contraseña").max(200),
+});
+
+export const userCreateSchema = z.object({
+  name: trimmed(120).min(2, "Nombre requerido"),
+  email,
+  role: z.enum(values(USER_ROLES), { message: "Selecciona un rol" }),
+  // Vacío = se genera una contraseña temporal automáticamente.
+  password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
+});
+
+export const userUpdateSchema = z.object({
+  name: trimmed(120).min(2, "Nombre requerido"),
+  role: z.enum(values(USER_ROLES), { message: "Selecciona un rol" }),
+  active: z.boolean().default(false),
+});
+
+export const passwordResetSchema = z.object({
+  password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Escribe tu contraseña actual").max(200),
+    newPassword: password,
+    confirmPassword: z.string().max(200),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] })
+  .refine((d) => d.newPassword !== d.currentPassword, { message: "La nueva contraseña debe ser distinta", path: ["newPassword"] });
 
 /** Convierte FormData en un objeto plano apto para zod (checkbox → boolean, multi → array). */
 export function formToObject(formData: FormData, arrays: string[] = [], booleans: string[] = []) {

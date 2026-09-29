@@ -1,11 +1,14 @@
-import { isAdmin } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { registrationsToCsv } from "@/lib/csv";
 import { getMissionById, listRegistrations } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
-  if (!(await isAdmin())) return new Response("No autorizado", { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return new Response("No autorizado", { status: 401 });
+  if (user.mustChangePassword || !can(user.role, "participants.export")) return new Response("Sin permiso", { status: 403 });
   const { id } = await ctx.params;
   const mission = await getMissionById(id);
   if (!mission) return new Response("Misión no encontrada", { status: 404 });

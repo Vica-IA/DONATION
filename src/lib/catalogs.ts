@@ -85,6 +85,12 @@ export const REGISTRATION_STATUS = [
   { value: "cancelado", label: "Cancelado" },
 ] as const satisfies readonly Option[];
 
+export const USER_ROLES = [
+  { value: "admin", label: "Administrador" },
+  { value: "coordinador", label: "Coordinador de misión" },
+  { value: "consulta", label: "Solo consulta" },
+] as const satisfies readonly Option[];
+
 export const MISSION_STATUS = [
   { value: "planificacion", label: "En planificación" },
   { value: "convocatoria", label: "Convocatoria abierta" },
@@ -102,6 +108,7 @@ export type Role = (typeof ROLES)[number]["value"];
 export type Skill = (typeof SKILLS)[number]["value"];
 export type RegistrationStatus = (typeof REGISTRATION_STATUS)[number]["value"];
 export type MissionStatus = (typeof MISSION_STATUS)[number]["value"];
+export type UserRole = (typeof USER_ROLES)[number]["value"];
 
 export function values<T extends string>(opts: readonly Option<T>[]): [T, ...T[]] {
   return opts.map((o) => o.value) as [T, ...T[]];

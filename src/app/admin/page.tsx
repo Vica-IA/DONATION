@@ -1,38 +1,58 @@
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { Progress } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { MISSION_STATUS, ROLES, TRANSPORT, AVAILABILITY, labelOf } from "@/lib/catalogs";
 import { siteUrl } from "@/lib/config";
 import { getMissionStats, listMissions, recentActivity } from "@/lib/data";
 import { formatDateRange, formatDateTime, percent } from "@/lib/format";
+import { can } from "@/lib/permissions";
 
 export const metadata = { title: "Panel" };
 
-const ENTITY_LABELS: Record<string, string> = { mission: "Misión", registration: "Inscripción", volunteer: "Persona" };
+const ENTITY_LABELS: Record<string, string> = { mission: "Misión", registration: "Inscripción", volunteer: "Persona", user: "Usuario" };
 const ACTION_LABELS: Record<string, string> = {
   creada: "creada",
+  creado: "creado",
   actualizada: "actualizada",
+  actualizado: "actualizado",
   actualizada_por_persona: "actualizada por la persona",
   actualizada_por_admin: "actualizada por el equipo",
+  contrasena_restablecida: "contraseña restablecida",
+  contrasena_cambiada: "contraseña cambiada",
 };
 
-export default async function AdminHome() {
-  await requireAdmin("/admin");
+export default async function AdminHome({ searchParams }: { searchParams: Promise<{ denegado?: string; cuenta?: string }> }) {
+  const user = await requireUser("/admin");
+  const { denegado, cuenta } = await searchParams;
+  const canManageMissions = can(user.role, "missions.manage");
+  const canExport = can(user.role, "participants.export");
   const missions = await listMissions();
   const stats = await Promise.all(missions.map((m) => getMissionStats(m)));
   const activity = await recentActivity(10);
 
   return (
     <div className="space-y-8">
+      {denegado ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="alert">
+          No tienes permiso para esa acción. Pide a un administrador que ajuste tu rol si la necesitas.
+        </div>
+      ) : null}
+      {cuenta === "ok" ? (
+        <div className="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800" role="status">
+          Contraseña actualizada. Tus otras sesiones se cerraron.
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Misiones</h1>
           <p className="text-sm text-slate-500">Confirmaciones, cupos y logística de cada misión.</p>
         </div>
-        <Link href="/admin/misiones/nueva" className="btn-secondary">
-          + Nueva misión
-        </Link>
+        {canManageMissions ? (
+          <Link href="/admin/misiones/nueva" className="btn-secondary">
+            + Nueva misión
+          </Link>
+        ) : null}
       </div>
 
       {missions.map((m, i) => {
@@ -58,9 +78,11 @@ export default async function AdminHome() {
                 <Link href={`/admin/misiones/${m.id}`} className="btn-primary">
                   Ver participantes
                 </Link>
-                <Link href={`/admin/misiones/${m.id}/editar`} className="btn-secondary">
-                  Editar
-                </Link>
+                {canManageMissions ? (
+                  <Link href={`/admin/misiones/${m.id}/editar`} className="btn-secondary">
+                    Editar
+                  </Link>
+                ) : null}
               </div>
             </div>
 
@@ -127,9 +149,11 @@ export default async function AdminHome() {
                 <a className="btn-accent" href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer">
                   Compartir por WhatsApp
                 </a>
-                <a className="btn-ghost" href={`/admin/misiones/${m.id}/export`}>
-                  Descargar CSV
-                </a>
+                {canExport ? (
+                  <a className="btn-ghost" href={`/admin/misiones/${m.id}/export`}>
+                    Descargar CSV
+                  </a>
+                ) : null}
               </div>
             </div>
           </section>

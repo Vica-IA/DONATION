@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { MissionForm } from "../mission-form";
 
 export default async function NewMissionPage() {
-  await requireAdmin("/admin/misiones/nueva");
+  await requirePermission("missions.manage", "/admin/misiones/nueva");
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>

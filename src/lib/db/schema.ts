@@ -102,6 +102,20 @@ export const missionRegistrations = sqliteTable(
   ],
 );
 
+/** Usuarios del panel (equipo). Cada uno tiene correo, contraseña propia y rol. */
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(), // siempre en minúsculas
+  name: text("name").notNull(),
+  role: text("role").notNull().default("consulta"), // USER_ROLES
+  passwordHash: text("password_hash").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  mustChangePassword: integer("must_change_password", { mode: "boolean" }).notNull().default(false),
+  passwordChangedAt: text("password_changed_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  lastLoginAt: text("last_login_at"),
+  ...timestamps,
+});
+
 /** Bitácora mínima de actividad (principio de trazabilidad). */
 export const activityLog = sqliteTable("activity_log", {
   id: text("id").primaryKey(),
@@ -109,7 +123,7 @@ export const activityLog = sqliteTable("activity_log", {
   entityId: text("entity_id").notNull(),
   action: text("action").notNull(),
   detail: text("detail"),
-  actor: text("actor").notNull().default("sistema"), // 'admin' | 'publico' | 'sistema'
+  actor: text("actor").notNull().default("sistema"), // nombre del usuario del panel | 'publico' | 'sistema'
   createdAt: text("created_at").notNull().default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
 });
 
@@ -118,3 +132,4 @@ export type Mission = typeof missions.$inferSelect;
 export type Volunteer = typeof volunteers.$inferSelect;
 export type MissionRegistration = typeof missionRegistrations.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
+export type User = typeof users.$inferSelect;

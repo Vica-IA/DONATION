@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getMissionById } from "@/lib/data";
 import { MissionForm } from "../../mission-form";
 
 export default async function EditMissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireAdmin(`/admin/misiones/${id}/editar`);
+  await requirePermission("missions.manage", `/admin/misiones/${id}/editar`);
   const mission = await getMissionById(id);
   if (!mission) notFound();
   return (

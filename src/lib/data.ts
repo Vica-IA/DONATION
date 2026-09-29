@@ -42,21 +42,21 @@ export async function getMissionById(id: string): Promise<Mission | null> {
   return rows[0] ?? null;
 }
 
-export async function createMission(input: MissionInput): Promise<Mission> {
+export async function createMission(input: MissionInput, actor: string): Promise<Mission> {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.insert(missions).values({ id, ...input });
-  await log("mission", id, "creada", input.name, "admin");
+  await log("mission", id, "creada", input.name, actor);
   return (await getMissionById(id))!;
 }
 
-export async function updateMission(id: string, input: MissionInput): Promise<void> {
+export async function updateMission(id: string, input: MissionInput, actor: string): Promise<void> {
   const db = await getDb();
   await db
     .update(missions)
     .set({ ...input, updatedAt: nowIso() })
     .where(eq(missions.id, id));
-  await log("mission", id, "actualizada", null, "admin");
+  await log("mission", id, "actualizada", null, actor);
 }
 
 // ---------- Estadísticas ----------
@@ -343,7 +343,7 @@ export type AdminRegistrationUpdate = {
   organizationId: string;
 };
 
-export async function updateRegistrationByAdmin(id: string, input: AdminRegistrationUpdate): Promise<void> {
+export async function updateRegistrationByAdmin(id: string, input: AdminRegistrationUpdate, actor: string): Promise<void> {
   const db = await getDb();
   const current = await getRegistration(id);
   if (!current) throw new Error("Inscripción no encontrada");
@@ -370,7 +370,7 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
   const changes: string[] = [];
   if (current.registration.status !== input.status) changes.push(`estado ${current.registration.status} → ${input.status}`);
   if ((current.registration.assignedRole ?? null) !== input.assignedRole) changes.push(`rol asignado: ${input.assignedRole ?? "—"}`);
-  await log("registration", id, "actualizada_por_admin", changes.join("; ") || "datos editados", "admin");
+  await log("registration", id, "actualizada_por_admin", changes.join("; ") || "datos editados", actor);
 }
 
 // ---------- Bitácora ----------

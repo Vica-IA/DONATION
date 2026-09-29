@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { ATTENDANCE, AVAILABILITY, BLOOD_TYPES, DOC_TYPES, ROLES, SKILLS, TRANSPORT, labelOf } from "@/lib/catalogs";
 import { getRegistration, listOrganizations } from "@/lib/data";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { can } from "@/lib/permissions";
 import { ParticipantForm } from "./form";
 
 const ACTION_LABELS: Record<string, string> = {
@@ -15,7 +16,9 @@ const ACTION_LABELS: Record<string, string> = {
 
 export default async function ParticipantPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireAdmin(`/admin/participantes/${id}`);
+  const user = await requireUser(`/admin/participantes/${id}`);
+  const canManage = can(user.role, "participants.manage");
+  const canSeeSensitive = can(user.role, "participants.sensitive");
   const [detail, organizations] = await Promise.all([getRegistration(id), listOrganizations()]);
   if (!detail) notFound();
   const { registration: r, volunteer: v, organization: o, mission, activity } = detail;
@@ -35,17 +38,22 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
     ["Disponibilidad", `${labelOf(AVAILABILITY, r.availability)}${r.availabilityNotes ? ` · ${r.availabilityNotes}` : ""}`],
     ["Transporte", labelOf(TRANSPORT, r.transport)],
     ["Rol preferido", labelOf(ROLES, r.preferredRole) || "—"],
+    ["Rol asignado", labelOf(ROLES, r.assignedRole) || "—"],
     ["Habilidades", skills.length ? skills.map((s) => labelOf(SKILLS, s)).join(", ") : "—"],
     ["Experiencia en obra", v.constructionExperience ? "Sí" : "No"],
     ["Talla camiseta", v.shirtSize ?? "—"],
+    ["Comentarios", r.comments ?? "—"],
+    ["Registrado", formatDateTime(r.createdAt)],
+    ["Confirmado", r.confirmedAt ? formatDateTime(r.confirmedAt) : "—"],
+  ];
+
+  // Datos de salud y emergencia: solo para quien gestiona (00.00 §25, datos sensibles).
+  const sensitiveRows: [string, React.ReactNode][] = [
     ["EPS", v.eps ?? "—"],
     ["RH", labelOf(BLOOD_TYPES, v.bloodType) || "—"],
     ["Contacto de emergencia", `${v.emergencyContactName ?? "—"} · ${v.emergencyContactPhone ?? ""}`],
     ["Condiciones médicas", v.medicalNotes ?? "—"],
     ["Alimentación", v.dietaryNotes ?? "—"],
-    ["Comentarios", r.comments ?? "—"],
-    ["Registrado", formatDateTime(r.createdAt)],
-    ["Confirmado", r.confirmedAt ? formatDateTime(r.confirmedAt) : "—"],
   ];
 
   return (
@@ -67,7 +75,17 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ParticipantForm registration={r} volunteer={v} organizations={organizations} />
+        {canManage ? (
+          <ParticipantForm registration={r} volunteer={v} organizations={organizations} />
+        ) : (
+          <section className="card">
+            <h2 className="section-title">Gestión</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Tu rol es de solo consulta: puedes ver la ficha, pero no cambiar estado, rol ni notas.
+            </p>
+            {r.adminNotes ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">{r.adminNotes}</p> : null}
+          </section>
+        )}
         <div className="space-y-6">
           <section className="card">
             <h2 className="section-title">Ficha</h2>
@@ -79,6 +97,21 @@ export default async function ParticipantPage({ params }: { params: Promise<{ id
                 </div>
               ))}
             </dl>
+          </section>
+          <section className="card">
+            <h2 className="section-title">Salud y emergencias</h2>
+            {canSeeSensitive ? (
+              <dl className="mt-3 divide-y divide-slate-100 text-sm">
+                {sensitiveRows.map(([k, val]) => (
+                  <div key={k} className="grid grid-cols-[140px_1fr] gap-2 py-2">
+                    <dt className="text-slate-500">{k}</dt>
+                    <dd className="break-words">{val}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">Información reservada al equipo coordinador.</p>
+            )}
           </section>
           <section className="card">
             <h2 className="section-title">Historial</h2>
