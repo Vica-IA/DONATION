@@ -20,7 +20,7 @@ export const organizations = sqliteTable("organizations", {
   ...timestamps,
 });
 
-/** Misiones de campo (p. ej. Misión Chocó 01, 9–12 oct 2026). */
+/** Misiones de campo (p. ej. Misión Levantar Chocó, 9–12 oct 2026). */
 export const missions = sqliteTable("missions", {
   id: text("id").primaryKey(),
   code: text("code").notNull().unique(), // CHO-2026-01

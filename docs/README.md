@@ -6,7 +6,7 @@
 |---|---|---|
 | [00.00 Project Governance](00.00_PROJECT_GOVERNANCE.md) | Identidad, visión, principios, modelo de intervención, roadmap estratégico. | v0.1 · base de definición |
 | [00.01 Executive Summary](00.01_EXECUTIVE_SUMMARY.md) | Resumen ejecutivo: problema, oportunidad, MVP, gobernanza. | v0.1 · base estratégica |
-| [08.00 Misión Chocó Master Plan](08.00_MISION_CHOCO_MASTER_PLAN.md) | Plan maestro de la primera misión: fechas críticas, familia, vivienda, presupuesto, riesgos, GO/NO-GO. | v0.1 · plan de ejecución |
+| [08.00 Misión Levantar Chocó Master Plan](08.00_MISION_CHOCO_MASTER_PLAN.md) | Plan maestro de la primera misión: fechas críticas, familia, vivienda, presupuesto, riesgos, GO/NO-GO. | v0.1 · plan de ejecución |
 | [09.01 Consentimiento informado · Misión Kairós Etapa 2](09.01_CONSENTIMIENTO_INFORMADO_MISION_KAIROS_ETAPA2.md) | Condiciones de participación para voluntarios (requisitos, riesgos, deberes, conducta, logística, datos, responsabilidad). | Sujeto a revisión jurídica antes de cada misión |
 | [10.00 MVP técnico](10.00_MVP_TECNICO.md) | Qué hace la plataforma hoy, arquitectura, modelo de datos, roles, siguientes pasos. | Se actualiza con cada entrega |
 | Prototipo "Misión Chocó · Coordinación" (archivo de diseño) | Referencia visual y funcional de la consola: resumen, itinerario, áreas, voluntarios, tareas y app del voluntario. | Implementado: consola, resumen, áreas y tareas. Pendiente: itinerario, transporte, finanzas, cuadrillas, app del voluntario |
@@ -26,6 +26,7 @@
 | 2026-09-29 | Se incorpora el documento 09.01 y el flujo de aceptación de condiciones de participación; seguimiento del aporte económico; campos de vacuna, póliza y contacto de emergencia ampliado. |
 | 2026-09-29 | Nuevo diseño del panel según el prototipo "Misión Chocó · Coordinación": consola con barra lateral, centro de misión, coordinación por áreas y tablero de tareas. Roles con alcance: administrador, líder de grupo (KAIROS, Fundación Pálpitos) y coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional). |
 | 2026-09-29 | Producción en Vercel: proyecto `donation` conectado a GitHub (cada push a la rama de trabajo despliega solo) con base de datos Turso, en <https://donation-psi-tawny.vercel.app>; la autenticación de Vercel queda solo para previews para que el formulario sea público. |
+| 2026-09-29 | La primera misión pasa a llamarse *Misión Levantar Chocó* (antes "Misión Chocó 01"); las bases ya creadas se renombran solas al arrancar si nadie editó el nombre. |
 
 ## Puntos por resolver entre documentos
 

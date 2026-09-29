@@ -152,7 +152,7 @@ async function main() {
   const base = `${BASE}/admin/m/${missionId}`;
   let dash = await body(page);
   assert.match(dash, /Centro de misión/);
-  assert.match(dash, /Misión Chocó 01/);
+  assert.match(dash, /Misión Levantar Chocó/);
   assert.match(dash, /Grupo Kairós 1\/1/);
   assert.match(dash, /Fundación Pálpitos 0\/1/);
   assert.match(dash, /Administrador/);

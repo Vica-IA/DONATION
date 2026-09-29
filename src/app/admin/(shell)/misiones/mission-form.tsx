@@ -24,7 +24,7 @@ export function MissionForm({ mission }: { mission: Mission | null }) {
     <form action={formAction} className="card space-y-5" noValidate>
       {errors._form ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errors._form}</div> : null}
       <Field label="Nombre" htmlFor="name" error={errors.name} required>
-        <input id="name" name="name" className={cls("name")} defaultValue={v("name")} placeholder="Misión Chocó 01" />
+        <input id="name" name="name" className={cls("name")} defaultValue={v("name")} placeholder="Misión Levantar Chocó" />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Código" htmlFor="code" error={errors.code} required help="Identificador interno, p. ej. CHO-2026-01">

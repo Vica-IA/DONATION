@@ -1,13 +1,16 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
 import { missions, organizations, tasks, users } from "./schema";
 import { DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, hashPassword } from "../password";
 import { KAIROS_ETAPA2_DECLARATIONS, KAIROS_ETAPA2_TERMS_MARKDOWN, KAIROS_ETAPA2_TERMS_VERSION } from "../terms/kairos-etapa2";
 
 const SEED_MISSION_CODE = "CHO-2026-01";
+const SEED_MISSION_NAME = "Misión Levantar Chocó";
+/** Nombre provisional con el que se creó la misión en las primeras bases. */
+const LEGACY_MISSION_NAME = "Misión Chocó 01";
 
 /**
- * Datos iniciales del primer caso de uso (Misión Chocó). Solo se insertan si
+ * Datos iniciales del primer caso de uso (Misión Levantar Chocó). Solo se insertan si
  * la base está vacía, así que es seguro ejecutarlo en cada arranque.
  */
 export async function seedIfEmpty(db: Db) {
@@ -25,7 +28,7 @@ export async function seedIfEmpty(db: Db) {
       id: crypto.randomUUID(),
       code: SEED_MISSION_CODE,
       slug: "choco-2026-01",
-      name: "Misión Chocó 01",
+      name: SEED_MISSION_NAME,
       description:
         "Primera misión de campo de DONATION: reconstrucción de una vivienda y acompañamiento integral a una familia afectada en el Chocó. Grupos aliados: Grupo Kairós y Fundación Pálpitos.",
       location: "Chocó, Colombia (Tadó, Istmina y comunidades cercanas a Puerto Meluk; por confirmar)",
@@ -46,6 +49,12 @@ export async function seedIfEmpty(db: Db) {
   // Bases creadas con los nombres provisionales de los grupos: aplicar los nombres oficiales.
   await db.update(organizations).set({ name: "Grupo Kairós", slug: "grupo-kairos" }).where(eq(organizations.slug, "kairos-life"));
   await db.update(organizations).set({ name: "Fundación Pálpitos", slug: "fundacion-palpitos" }).where(eq(organizations.slug, "palpitos"));
+
+  // Bases creadas con el nombre provisional de la misión: aplicar el nombre oficial (solo si nadie lo editó).
+  await db
+    .update(missions)
+    .set({ name: SEED_MISSION_NAME })
+    .where(and(eq(missions.code, SEED_MISSION_CODE), eq(missions.name, LEGACY_MISSION_NAME)));
 
   // Bases creadas antes de existir las condiciones: cargar el documento inicial una sola vez.
   const seeded = (await db.select().from(missions).where(eq(missions.code, SEED_MISSION_CODE)).limit(1))[0];

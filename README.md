@@ -1,7 +1,7 @@
 # DONATION — De la donación al impacto
 
 Plataforma de gestión, trazabilidad e impacto para misiones y ayuda humanitaria.
-Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Chocó 01 (9–12 de octubre de 2026): confirmar a los voluntarios de Grupo Kairós y Fundación Pálpitos y tener su logística lista.
+Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Levantar Chocó (9–12 de octubre de 2026): confirmar a los voluntarios de Grupo Kairós y Fundación Pálpitos y tener su logística lista.
 
 ## Qué hace hoy
 
