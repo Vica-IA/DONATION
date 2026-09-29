@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #effaf6;
+  --color-brand-100: #d7f2e6;
+  --color-brand-200: #b0e4ce;
+  --color-brand-300: #7bcfb0;
+  --color-brand-500: #1f9d78;
+  --color-brand-600: #157a5e;
+  --color-brand-700: #10614c;
+  --color-brand-800: #0f4d3d;
+  --color-brand-900: #0c3d31;
+  --color-accent-400: #f5b544;
+  --color-accent-500: #e59f1f;
+  --color-accent-600: #c4830f;
+  --color-ink: #10231d;
+  --color-paper: #f6f8f7;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .container-narrow {
+    @apply mx-auto w-full max-w-3xl px-4 sm:px-6;
+  }
+  .container-wide {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6;
+  }
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-800 hover:bg-slate-50;
+  }
+  .btn-ghost {
+    @apply text-brand-700 hover:bg-brand-50;
+  }
+  .btn-accent {
+    @apply bg-accent-500 text-ink hover:bg-accent-600;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-800;
+  }
+  .help {
+    @apply mt-1 text-xs text-slate-500;
+  }
+  .error {
+    @apply mt-1 text-xs font-medium text-red-600;
+  }
+  .input {
+    @apply block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base text-ink shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 sm:text-sm;
+  }
+  .input-error {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-200;
+  }
+  .choice {
+    @apply flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-sm transition hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50;
+  }
+  .badge,
+  .badge-confirmado,
+  .badge-lista_espera,
+  .badge-pendiente,
+  .badge-cancelado {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-confirmado {
+    @apply bg-brand-100 text-brand-800;
+  }
+  .badge-lista_espera {
+    @apply bg-amber-100 text-amber-800;
+  }
+  .badge-pendiente {
+    @apply bg-slate-200 text-slate-700;
+  }
+  .badge-cancelado {
+    @apply bg-red-100 text-red-700;
+  }
+  .section-title {
+    @apply text-lg font-semibold text-ink;
+  }
+  .kpi {
+    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+  }
+  .kpi-value {
+    @apply mt-1 text-3xl font-bold tracking-tight text-ink;
+  }
+  .kpi-label {
+    @apply text-xs font-medium uppercase tracking-wide text-slate-500;
+  }
+  .table {
+    @apply w-full text-left text-sm;
+  }
+  .table th {
+    @apply border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .table td {
+    @apply border-b border-slate-100 px-3 py-2.5 align-top;
+  }
+}
