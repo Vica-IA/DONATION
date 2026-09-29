@@ -216,4 +216,8 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       )`,
     ],
   },
+  {
+    id: "0008_volunteer_refugio",
+    statements: [`ALTER TABLE volunteers ADD COLUMN refugio TEXT`],
+  },
 ];

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/admin-shell";
 import { StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { AVAILABILITY, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, TRANSPORT, labelOf } from "@/lib/catalogs";
+import { PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, labelOf } from "@/lib/catalogs";
 import { getMissionById, getMissionStats, listOrganizations, listRegistrations, missionHasTerms } from "@/lib/data";
 import { formatDateRange } from "@/lib/format";
 import { can, canExport, participantScope } from "@/lib/permissions";
@@ -114,7 +114,6 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
               <th>Contacto</th>
               <th>Documento</th>
               <th>Rol</th>
-              <th>Logística</th>
               <th>Requisitos</th>
               <th></th>
             </tr>
@@ -138,7 +137,10 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
                     </Link>
                     {v.city ? <div className="text-xs text-muted">{v.city}</div> : null}
                   </td>
-                  <td>{o?.name ?? v.organizationOther ?? <span className="text-faint">—</span>}</td>
+                  <td>
+                    {o?.name ?? v.organizationOther ?? <span className="text-faint">—</span>}
+                    {v.refugio ? <div className="text-xs text-muted">Refugio: {v.refugio}</div> : null}
+                  </td>
                   <td>
                     <a href={`https://wa.me/${v.phone.replace(/\D/g, "")}`} className="text-brand-700 hover:underline" target="_blank" rel="noopener noreferrer">
                       {v.phone}
@@ -156,11 +158,6 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
                     ) : (
                       <span className="text-faint">—</span>
                     )}
-                  </td>
-                  <td className="text-xs text-muted">
-                    <div>{labelOf(TRANSPORT, r.transport)}</div>
-                    <div>{labelOf(AVAILABILITY, r.availability)}</div>
-                    {r.availabilityNotes ? <div className="text-faint">{r.availabilityNotes}</div> : null}
                   </td>
                   <td className="space-y-1 whitespace-nowrap">
                     {hasTerms ? (

@@ -62,7 +62,8 @@ export const volunteers = sqliteTable(
     email: text("email"),
     city: text("city"),
     organizationId: text("organization_id").references(() => organizations.id),
-    organizationOther: text("organization_other"),
+    organizationOther: text("organization_other"), // heredado: el formulario ya no admite "otro grupo"
+    refugio: text("refugio"), // Grupo Kairós: refugio al que pertenece
     eps: text("eps"),
     bloodType: text("blood_type"),
     emergencyContactName: text("emergency_contact_name"),

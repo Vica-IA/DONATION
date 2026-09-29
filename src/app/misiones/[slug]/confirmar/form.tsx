@@ -1,16 +1,15 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Field } from "@/components/ui";
 import {
   ATTENDANCE,
-  AVAILABILITY,
   BLOOD_TYPES,
   DOC_TYPES,
+  KAIROS_SLUG,
   ROLES,
   SHIRT_SIZES,
   SKILLS,
-  TRANSPORT,
 } from "@/lib/catalogs";
 import type { Organization } from "@/lib/db/schema";
 import { confirmParticipation, type ConfirmState } from "./actions";
@@ -42,6 +41,8 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
   const [state, formAction, pending] = useActionState<ConfirmState, FormData>(action, initialConfirmState);
   const { errors, values } = state;
   const cls = (key: string) => `input${errors[key] ? " input-error" : ""}`;
+  const [organizationId, setOrganizationId] = useState(str(values, "organizationId"));
+  const isKairos = organizations.find((o) => o.id === organizationId)?.slug === KAIROS_SLUG;
 
   return (
     <form action={formAction} className="space-y-8" noValidate>
@@ -87,50 +88,6 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
           {errors.attendance ? <p className="error">{errors.attendance}</p> : null}
         </fieldset>
 
-        <fieldset>
-          <legend className="label">
-            Disponibilidad <span className="text-red-500">*</span>
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {AVAILABILITY.map((o) => (
-              <label key={o.value} className="choice">
-                <input
-                  type="radio"
-                  name="availability"
-                  value={o.value}
-                  defaultChecked={(str(values, "availability") || "completa") === o.value}
-                  className="mt-0.5"
-                />
-                <span>{o.label}</span>
-              </label>
-            ))}
-          </div>
-          {errors.availability ? <p className="error">{errors.availability}</p> : null}
-        </fieldset>
-        <Field label="Si es parcial, ¿qué días puedes?" htmlFor="availabilityNotes" error={errors.availabilityNotes}>
-          <input id="availabilityNotes" name="availabilityNotes" className={cls("availabilityNotes")} defaultValue={str(values, "availabilityNotes")} placeholder="Ej.: llego el 10 en la noche" />
-        </Field>
-
-        <fieldset>
-          <legend className="label">
-            Transporte <span className="text-red-500">*</span>
-          </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {TRANSPORT.map((o) => (
-              <label key={o.value} className="choice">
-                <input
-                  type="radio"
-                  name="transport"
-                  value={o.value}
-                  defaultChecked={(str(values, "transport") || "grupo") === o.value}
-                  className="mt-0.5"
-                />
-                <span>{o.label}</span>
-              </label>
-            ))}
-          </div>
-          {errors.transport ? <p className="error">{errors.transport}</p> : null}
-        </fieldset>
 
         <Field label="¿En qué te gustaría apoyar?" htmlFor="preferredRole" error={errors.preferredRole}>
           <select id="preferredRole" name="preferredRole" className={cls("preferredRole")} defaultValue={str(values, "preferredRole")}>
@@ -181,9 +138,9 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Grupo con el que participas" htmlFor="organizationId" error={errors.organizationId}>
-            <select id="organizationId" name="organizationId" className={cls("organizationId")} defaultValue={str(values, "organizationId")}>
-              <option value="">Otro / ninguno</option>
+          <Field label="Grupo con el que participas" htmlFor="organizationId" error={errors.organizationId} required>
+            <select id="organizationId" name="organizationId" className={cls("organizationId")} value={organizationId} onChange={(e) => setOrganizationId(e.target.value)}>
+              <option value="">Selecciona tu grupo</option>
               {organizations.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -191,9 +148,11 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
               ))}
             </select>
           </Field>
-          <Field label="Si es otro grupo, ¿cuál?" htmlFor="organizationOther" error={errors.organizationOther}>
-            <input id="organizationOther" name="organizationOther" className={cls("organizationOther")} defaultValue={str(values, "organizationOther")} />
-          </Field>
+          {isKairos ? (
+            <Field label="Refugio" htmlFor="refugio" error={errors.refugio} required help="El refugio de Grupo Kairós al que perteneces.">
+              <input id="refugio" name="refugio" className={cls("refugio")} defaultValue={str(values, "refugio")} placeholder="Nombre de tu refugio" />
+            </Field>
+          ) : null}
         </div>
       </section>
 
@@ -232,9 +191,6 @@ export function ConfirmForm({ slug, organizations, missionDates }: Props) {
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Fecha de vacuna contra la fiebre amarilla" htmlFor="yellowFeverVaccineDate" error={errors.yellowFeverVaccineDate} help="Requisito para viajar al Chocó: mínimo 10 días antes de la salida. Si aún no la tienes, déjalo vacío.">
-            <input id="yellowFeverVaccineDate" name="yellowFeverVaccineDate" type="date" className={cls("yellowFeverVaccineDate")} defaultValue={str(values, "yellowFeverVaccineDate")} />
-          </Field>
           <Field label="Póliza de accidentes personales" htmlFor="accidentInsurance" error={errors.accidentInsurance} help="Aseguradora o número de póliza, si ya la tienes.">
             <input id="accidentInsurance" name="accidentInsurance" className={cls("accidentInsurance")} defaultValue={str(values, "accidentInsurance")} />
           </Field>

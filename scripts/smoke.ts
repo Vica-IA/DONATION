@@ -36,13 +36,20 @@ async function main() {
   await page.getByText("Revisa los campos marcados en rojo.").waitFor();
   assert.ok(await page.getByText("Indica si confirmas tu participación").isVisible());
   assert.ok(await page.getByText("Escribe tu nombre completo").isVisible());
-  console.log("✓ validación de campos requeridos");
+  assert.ok(await page.getByText("Elige tu grupo").isVisible());
+  assert.equal(await page.locator("#refugio").count(), 0);
+  // Grupo Kairós muestra el refugio y lo exige
+  const kairosOpts = await page.$$eval("#organizationId option", (o) => o.map((x) => ({ v: (x as HTMLOptionElement).value, t: x.textContent })));
+  assert.ok(!kairosOpts.some((o) => /otro/i.test(o.t ?? "")), "el formulario ya no ofrece 'otro grupo'");
+  await page.selectOption("#organizationId", kairosOpts.find((o) => o.t?.includes("Kairós"))!.v);
+  await page.locator("#refugio").waitFor();
+  await page.selectOption("#organizationId", kairosOpts.find((o) => o.t?.includes("Pálpitos"))!.v);
+  assert.equal(await page.locator("#refugio").count(), 0);
+  console.log("✓ validación de campos requeridos; refugio solo con Grupo Kairós");
 
-  const fill = async (p: { name: string; doc: string; attendance: string; phone: string; org?: string }) => {
+  const fill = async (p: { name: string; doc: string; attendance: string; phone: string; org?: string; refugio?: string }) => {
     await page.goto(`${BASE}/misiones/${SLUG}/confirmar`);
     await page.getByLabel(new RegExp(`^${p.attendance}`)).check();
-    await page.getByLabel("Todos los días de la misión").check();
-    await page.getByLabel("Viajo con el grupo").check();
     await page.selectOption("#preferredRole", "logistica");
     await page.fill("#fullName", p.name);
     await page.selectOption("#docType", "CC");
@@ -55,13 +62,17 @@ async function main() {
     const org = orgOptions.find((o) => o.t?.includes(p.org ?? "Kairós"));
     assert.ok(org, "el grupo debe existir en el select");
     await page.selectOption("#organizationId", org!.v);
+    if (org!.t?.includes("Kairós")) {
+      if (p.refugio !== "") await page.fill("#refugio", p.refugio ?? "Refugio San José");
+    } else {
+      assert.equal(await page.locator("#refugio").count(), 0);
+    }
     await page.fill("#eps", "Sura");
     await page.selectOption("#bloodType", "O+");
     await page.fill("#emergencyContactName", "Ana Pérez");
     await page.fill("#emergencyContactPhone", "3001112233");
     await page.fill("#emergencyContactRelationship", "Madre");
     await page.fill("#emergencyContactPhone2", "3009998877");
-    await page.fill("#yellowFeverVaccineDate", "2026-09-20");
     await page.fill("#accidentInsurance", "Sura · póliza 12345");
     await page.fill("#dietaryNotes", "Sin gluten");
     await page.getByLabel("Carpintería").check();
@@ -74,6 +85,22 @@ async function main() {
     await page.waitForURL(`**/misiones/${SLUG}/gracias**`);
     return new URL(page.url());
   };
+
+  // Kairós sin refugio: rechazado
+  await page.goto(`${BASE}/misiones/${SLUG}/confirmar`);
+  await page.getByLabel(/^Sí, confirmo/).check();
+  await page.selectOption("#preferredRole", "logistica");
+  await page.fill("#fullName", "Sin Refugio Prueba");
+  await page.selectOption("#docType", "CC");
+  await page.fill("#docNumber", "1000000009");
+  await page.fill("#phone", "3001000009");
+  await page.selectOption("#organizationId", kairosOpts.find((o) => o.t?.includes("Kairós"))!.v);
+  await page.fill("#emergencyContactName", "Ana Pérez");
+  await page.fill("#emergencyContactPhone", "3001112233");
+  await page.getByLabel(/Autorizo el tratamiento/).check();
+  await page.getByRole("button", { name: "Enviar mi respuesta" }).click();
+  await page.getByText("Indica tu refugio").waitFor();
+  assert.match(page.url(), /\/confirmar$/);
 
   let url = await fill({ name: "Juan Prueba Uno", doc: "1000000001", attendance: "Sí, confirmo", phone: "3001000001" });
   assert.equal(url.searchParams.get("estado"), "confirmado");
@@ -313,6 +340,8 @@ async function main() {
   assert.match(lines[0], /^Estado;Nombre completo;/);
   assert.match(lines[0], /Condiciones aceptadas el;Autoriza imagen/);
   assert.match(csv, /Juan Prueba Uno/);
+  assert.match(lines[0], /Grupo;Refugio;EPS/);
+  assert.match(csv, /Refugio San José/);
   console.log("✓ exportación CSV");
 
   // Editar misión: cupos 2 y versión 2 de condiciones

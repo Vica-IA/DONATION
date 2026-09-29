@@ -68,13 +68,16 @@ export function ParticipantForm({ registration, volunteer, organizations }: Prop
         </Field>
         <Field label="Grupo" htmlFor="organizationId" error={errors.organizationId}>
           <select id="organizationId" name="organizationId" className={cls("organizationId")} defaultValue={volunteer.organizationId ?? ""}>
-            <option value="">Otro / ninguno</option>
+            <option value="">Sin grupo</option>
             {organizations.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
               </option>
             ))}
           </select>
+        </Field>
+        <Field label="Refugio (Grupo Kairós)" htmlFor="refugio" error={errors.refugio}>
+          <input id="refugio" name="refugio" className={cls("refugio")} defaultValue={volunteer.refugio ?? ""} />
         </Field>
         <Field label="Celular" htmlFor="phone" error={errors.phone} required>
           <input id="phone" name="phone" className={cls("phone")} defaultValue={volunteer.phone} />

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   ATTENDANCE,
-  AVAILABILITY,
   BLOOD_TYPES,
   DOC_TYPES,
   MISSION_STATUS,
@@ -16,7 +15,6 @@ import {
   FINANCE_STATUS,
   TASK_STATUS,
   financeCategoryKind,
-  TRANSPORT,
   USER_ROLES,
   values,
 } from "./catalogs";
@@ -56,8 +54,8 @@ export const registrationSchema = z.object({
     .union([z.string().trim().email("Correo inválido").max(120), z.literal("")])
     .transform((v) => (v === "" ? null : v.toLowerCase())),
   city: optionalText(80),
-  organizationId: z.string().trim().max(64).optional().default(""),
-  organizationOther: optionalText(80),
+  organizationId: z.string().trim().min(1, "Elige tu grupo").max(64),
+  refugio: optionalText(80),
   eps: optionalText(80),
   bloodType: z.union([z.enum(values(BLOOD_TYPES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
   emergencyContactName: trimmed(120).min(3, "Indica un contacto de emergencia"),
@@ -67,10 +65,6 @@ export const registrationSchema = z.object({
     .union([phone, z.literal("")])
     .optional()
     .transform((v) => (v === undefined || v === "" ? null : v)),
-  yellowFeverVaccineDate: z
-    .union([isoDate, z.literal("")])
-    .optional()
-    .transform((v) => (v === undefined || v === "" ? null : v)),
   accidentInsurance: optionalText(120),
   medicalNotes: optionalText(600),
   dietaryNotes: optionalText(300),
@@ -78,9 +72,6 @@ export const registrationSchema = z.object({
   skills: z.array(z.enum(values(SKILLS))).max(SKILLS.length).default([]),
   constructionExperience: z.boolean().default(false),
   attendance: z.enum(values(ATTENDANCE), { message: "Indica si confirmas tu participación" }),
-  availability: z.enum(values(AVAILABILITY), { message: "Indica tu disponibilidad" }),
-  availabilityNotes: optionalText(300),
-  transport: z.enum(values(TRANSPORT), { message: "Indica cómo llegarás" }),
   preferredRole: z.union([z.enum(values(ROLES)), z.literal("")]).transform((v) => (v === "" ? null : v)),
   comments: optionalText(800),
   dataConsent: z.literal(true, { message: "Debes autorizar el tratamiento de tus datos" }),
@@ -104,6 +95,7 @@ export const adminRegistrationSchema = z.object({
     .union([z.string().trim().email("Correo inválido").max(120), z.literal("")])
     .transform((v) => (v === "" ? null : v.toLowerCase())),
   organizationId: z.string().trim().max(64).optional().default(""),
+  refugio: optionalText(80),
 });
 
 export const missionSchema = z

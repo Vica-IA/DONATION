@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getMissionBySlug, submitRegistration } from "@/lib/data";
+import { KAIROS_SLUG } from "@/lib/catalogs";
+import { getMissionBySlug, listOrganizations, submitRegistration } from "@/lib/data";
 import { isEphemeralDb } from "@/lib/db";
 import { flattenErrors, formToObject, registrationSchema, type FieldErrors } from "@/lib/validation";
 
@@ -39,9 +40,17 @@ export async function confirmParticipation(
     };
   }
 
+  // El grupo debe ser uno de los registrados; Grupo Kairós pide además el refugio.
+  const orgs = await listOrganizations();
+  const org = orgs.find((o) => o.id === parsed.data.organizationId);
+  if (!org) return { errors: { organizationId: "Elige tu grupo" }, values: raw, message: "Revisa los campos marcados en rojo." };
+  const isKairos = org.slug === KAIROS_SLUG;
+  if (isKairos && !parsed.data.refugio) return { errors: { refugio: "Indica tu refugio" }, values: raw, message: "Revisa los campos marcados en rojo." };
+  const data = { ...parsed.data, refugio: isKairos ? parsed.data.refugio : null };
+
   let result;
   try {
-    result = await submitRegistration(mission, parsed.data);
+    result = await submitRegistration(mission, data);
   } catch (err) {
     console.error("Error registrando confirmación", err);
     return {

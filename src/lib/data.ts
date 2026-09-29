@@ -82,8 +82,6 @@ export type MissionStats = {
   byStatus: Record<RegistrationStatus, number>;
   byOrganization: { name: string; confirmed: number; total: number }[];
   byRole: { role: string; confirmed: number }[];
-  byTransport: { transport: string; confirmed: number }[];
-  byAvailability: { availability: string; confirmed: number }[];
   available: number;
 };
 
@@ -136,18 +134,6 @@ export async function getMissionStats(mission: Mission): Promise<MissionStats> {
     .groupBy(sql`1`)
     .orderBy(sql`2 desc`);
 
-  const transportRows = await db
-    .select({ transport: missionRegistrations.transport, confirmed: count() })
-    .from(missionRegistrations)
-    .where(confirmedOnly)
-    .groupBy(missionRegistrations.transport);
-
-  const availabilityRows = await db
-    .select({ availability: missionRegistrations.availability, confirmed: count() })
-    .from(missionRegistrations)
-    .where(confirmedOnly)
-    .groupBy(missionRegistrations.availability);
-
   const [{ n: termsAccepted }] = await db
     .select({ n: count() })
     .from(missionRegistrations)
@@ -171,8 +157,6 @@ export async function getMissionStats(mission: Mission): Promise<MissionStats> {
     byStatus,
     byOrganization: orgRows.map((r) => ({ name: r.name, confirmed: Number(r.confirmed), total: r.total })),
     byRole: roleRows,
-    byTransport: transportRows,
-    byAvailability: availabilityRows,
     available: Math.max(0, mission.capacity - byStatus.confirmado),
   };
 }
@@ -314,14 +298,14 @@ export async function submitRegistration(mission: Mission, input: RegistrationIn
     email: input.email,
     city: input.city ?? null,
     organizationId,
-    organizationOther: organizationId ? null : (input.organizationOther ?? null),
+    organizationOther: null,
+    refugio: input.refugio ?? null,
     eps: input.eps ?? null,
     bloodType: input.bloodType,
     emergencyContactName: input.emergencyContactName,
     emergencyContactPhone: input.emergencyContactPhone,
     emergencyContactRelationship: input.emergencyContactRelationship ?? null,
     emergencyContactPhone2: input.emergencyContactPhone2 ?? null,
-    yellowFeverVaccineDate: input.yellowFeverVaccineDate ?? null,
     accidentInsurance: input.accidentInsurance ?? null,
     medicalNotes: input.medicalNotes ?? null,
     dietaryNotes: input.dietaryNotes ?? null,
@@ -361,9 +345,10 @@ export async function submitRegistration(mission: Mission, input: RegistrationIn
 
   const registrationValues = {
     attendance: input.attendance,
-    availability: input.availability,
-    availabilityNotes: input.availabilityNotes ?? null,
-    transport: input.transport,
+    // Disponibilidad y transporte ya no se preguntan en el formulario: quedan vacíos.
+    availability: "",
+    availabilityNotes: null,
+    transport: "",
     preferredRole: input.preferredRole,
     comments: input.comments ?? null,
     status,
@@ -424,6 +409,7 @@ export type AdminRegistrationUpdate = {
   phone: string;
   email: string | null;
   organizationId: string;
+  refugio: string | null;
 };
 
 export async function updateRegistrationByAdmin(id: string, input: AdminRegistrationUpdate, actor: string): Promise<void> {
@@ -450,7 +436,7 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
 
   await db
     .update(volunteers)
-    .set({ fullName: input.fullName, phone: input.phone, email: input.email, organizationId, updatedAt: now })
+    .set({ fullName: input.fullName, phone: input.phone, email: input.email, organizationId, refugio: input.refugio, updatedAt: now })
     .where(eq(volunteers.id, current.volunteer.id));
 
   const changes: string[] = [];

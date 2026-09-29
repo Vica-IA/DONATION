@@ -40,16 +40,6 @@ export const ATTENDANCE = [
   { value: "no_puedo", label: "No podré asistir" },
 ] as const satisfies readonly Option[];
 
-export const AVAILABILITY = [
-  { value: "completa", label: "Todos los días de la misión" },
-  { value: "parcial", label: "Solo algunos días (indica cuáles)" },
-] as const satisfies readonly Option[];
-
-export const TRANSPORT = [
-  { value: "grupo", label: "Viajo con el grupo desde el punto de encuentro" },
-  { value: "propio", label: "Llego por mi cuenta al territorio" },
-] as const satisfies readonly Option[];
-
 export const ROLES = [
   { value: "construccion", label: "Construcción / obra" },
   { value: "logistica", label: "Logística y transporte" },
@@ -98,6 +88,9 @@ export const USER_ROLES = [
   { value: "coordinador", label: "Coordinador de área" },
   { value: "consulta", label: "Solo consulta" },
 ] as const satisfies readonly Option[];
+
+/** Grupo Kairós se organiza en refugios: el formulario pide el refugio cuando se elige este grupo. */
+export const KAIROS_SLUG = "grupo-kairos";
 
 /** Áreas de coordinación de una misión. El orden es el de la interfaz. */
 export const AREAS = [
@@ -208,8 +201,6 @@ export type DocType = (typeof DOC_TYPES)[number]["value"];
 export type BloodType = (typeof BLOOD_TYPES)[number]["value"];
 export type ShirtSize = (typeof SHIRT_SIZES)[number]["value"];
 export type Attendance = (typeof ATTENDANCE)[number]["value"];
-export type Availability = (typeof AVAILABILITY)[number]["value"];
-export type Transport = (typeof TRANSPORT)[number]["value"];
 export type Role = (typeof ROLES)[number]["value"];
 export type Skill = (typeof SKILLS)[number]["value"];
 export type RegistrationStatus = (typeof REGISTRATION_STATUS)[number]["value"];

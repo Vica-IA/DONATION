@@ -14,7 +14,7 @@
 ## Cómo se usa cada documento en la plataforma
 
 - **09.01 Consentimiento informado** → es el texto que cada persona confirmada debe leer y aceptar en la plataforma (Paso 2 tras el formulario). La copia inicial que carga la app está en `src/lib/terms/kairos-etapa2.ts` (sin el anexo de control de cambios y con la *Declaración final de aceptación*). Después de cargada, el texto, las casillas y la versión se editan desde el panel: **Misiones → Editar → Condiciones de participación**. Si el texto cambia de fondo, sube la versión para que todos lo acepten de nuevo.
-- **08.00 Master Plan** → alimenta la misión inicial (fechas 9–12 de octubre de 2026, territorios) y la lista de requisitos GO/NO-GO que el panel ayuda a verificar (confirmados, condiciones aceptadas, aporte pagado, vacuna, póliza, contacto de emergencia).
+- **08.00 Master Plan** → alimenta la misión inicial (fechas 9–12 de octubre de 2026, territorios) y la lista de requisitos GO/NO-GO que el panel ayuda a verificar (confirmados, condiciones aceptadas, aporte pagado, póliza, contacto de emergencia).
 
 ## Registro de actualizaciones
 
@@ -30,6 +30,8 @@
 | 2026-09-29 | Módulo de finanzas por misión: gastos e ingresos con estado proyectado / comprometido / ejecutado, presupuesto por categoría, aportes de voluntarios automáticos, balance y faltante por recaudar, movimientos con filtros, edición y CSV. Registran el administrador y la coordinación de Financiero. |
 | 2026-09-29 | Enlaces de un solo uso para crear nueva contraseña (los genera un administrador desde la ficha del usuario, con envío por WhatsApp); la ficha propia ya no permite restablecerse y remite a Mi cuenta. |
 | 2026-09-29 | Rescate del único administrador desde Vercel con `ADMIN_PASSWORD_RESET` (se aplica una sola vez por valor y deja rastro en la bitácora). |
+| 2026-09-29 | El formulario público deja de pedir disponibilidad, transporte y fecha de vacuna contra la fiebre amarilla; se retiran de la ficha, la lista y el CSV. |
+| 2026-09-29 | El formulario exige elegir un grupo registrado (sin "otro grupo") y, con Grupo Kairós, el refugio; el refugio se ve en la ficha, la lista y el CSV y el equipo puede editarlo. |
 
 ## Puntos por resolver entre documentos
 

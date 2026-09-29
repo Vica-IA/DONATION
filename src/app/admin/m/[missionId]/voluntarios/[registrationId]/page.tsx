@@ -4,7 +4,7 @@ import { PageBody, PageHeader } from "@/components/admin-shell";
 import { CopyButton } from "@/components/copy-button";
 import { StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { ATTENDANCE, AVAILABILITY, BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, ROLES, SKILLS, TRANSPORT, labelOf } from "@/lib/catalogs";
+import { ATTENDANCE, BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, ROLES, SKILLS, labelOf } from "@/lib/catalogs";
 import { siteUrl } from "@/lib/config";
 import { getRegistration, listOrganizations, missionHasTerms } from "@/lib/data";
 import { formatCOP, formatDate, formatDateTime } from "@/lib/format";
@@ -44,10 +44,8 @@ export default async function ParticipantPage({ params }: { params: Promise<{ mi
     ["Documento", `${labelOf(DOC_TYPES, v.docType)} ${v.docNumber}`],
     ["Fecha de nacimiento", formatDate(v.birthDate) || "—"],
     ["Ciudad", v.city ?? "—"],
-    ["Grupo", o?.name ?? v.organizationOther ?? "—"],
+    ["Grupo", `${o?.name ?? v.organizationOther ?? "—"}${v.refugio ? ` · Refugio: ${v.refugio}` : ""}`],
     ["Respuesta", labelOf(ATTENDANCE, r.attendance)],
-    ["Disponibilidad", `${labelOf(AVAILABILITY, r.availability)}${r.availabilityNotes ? ` · ${r.availabilityNotes}` : ""}`],
-    ["Transporte", labelOf(TRANSPORT, r.transport)],
     ["Rol preferido", labelOf(ROLES, r.preferredRole) || "—"],
     ["Rol asignado", labelOf(ROLES, r.assignedRole) || "—"],
     ["Habilidades", skills.length ? skills.map((s) => labelOf(SKILLS, s)).join(", ") : "—"],
@@ -64,7 +62,6 @@ export default async function ParticipantPage({ params }: { params: Promise<{ mi
     ["EPS", v.eps ?? "—"],
     ["RH", labelOf(BLOOD_TYPES, v.bloodType) || "—"],
     ["Contacto de emergencia", `${v.emergencyContactName ?? "—"}${v.emergencyContactRelationship ? ` (${v.emergencyContactRelationship})` : ""} · ${v.emergencyContactPhone ?? ""}${v.emergencyContactPhone2 ? ` · ${v.emergencyContactPhone2}` : ""}`],
-    ["Vacuna fiebre amarilla", v.yellowFeverVaccineDate ? formatDate(v.yellowFeverVaccineDate) : "Sin registrar"],
     ["Póliza de accidentes", v.accidentInsurance ?? "Sin registrar"],
     ["Condiciones médicas", v.medicalNotes ?? "—"],
     ["Alimentación", v.dietaryNotes ?? "—"],
