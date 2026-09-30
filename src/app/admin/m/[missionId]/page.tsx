@@ -17,7 +17,17 @@ import { AreaDot, DueLabel, TaskCheck, defaultOwner } from "./tareas/task-bits";
 
 export const metadata = { title: "Centro de misión" };
 
-const ENTITY_LABELS: Record<string, string> = { mission: "Misión", registration: "Inscripción", volunteer: "Persona", user: "Usuario", task: "Tarea", finance: "Movimiento" };
+const ENTITY_LABELS: Record<string, string> = {
+  mission: "Misión",
+  registration: "Inscripción",
+  volunteer: "Persona",
+  user: "Usuario",
+  task: "Tarea",
+  finance: "Movimiento",
+  program: "Programa",
+  announcement: "Aviso",
+  squad: "Cuadrilla",
+};
 const ACTION_LABELS: Record<string, string> = {
   creada: "creada",
   creado: "creado",
@@ -34,6 +44,16 @@ const ACTION_LABELS: Record<string, string> = {
   eliminada: "eliminada",
   registrado: "registrado",
   eliminado: "eliminado",
+  actividad_creada: "actividad agregada",
+  actividad_actualizada: "actividad actualizada",
+  actividad_eliminada: "actividad eliminada",
+  aviso_publicado: "publicado",
+  aviso_actualizado: "actualizado",
+  aviso_eliminado: "eliminado",
+  cuadrilla_creada: "creada",
+  cuadrilla_actualizada: "actualizada",
+  cuadrilla_eliminada: "eliminada",
+  integrantes_actualizados: "integrantes actualizados",
 };
 
 type Props = { params: Promise<{ missionId: string }>; searchParams: Promise<{ denegado?: string; cuenta?: string }> };

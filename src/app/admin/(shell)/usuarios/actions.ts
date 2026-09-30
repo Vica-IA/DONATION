@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/auth";
 import { log } from "@/lib/data";
 import { isUniqueViolation } from "@/lib/db/errors";
 import { generateTempPassword } from "@/lib/password";
-import { createPasswordReset, resetUrl } from "@/lib/password-reset";
+import { INVITE_TTL_HOURS, createPasswordReset, resetUrl } from "@/lib/password-reset";
 import { countActiveAdmins, createUser, getUserById, setPassword, updateUser } from "@/lib/users";
 import { flattenErrors, formToObject, passwordResetSchema, userCreateSchema, userUpdateSchema, type FieldErrors } from "@/lib/validation";
 
@@ -14,7 +14,7 @@ export type UserFormState = {
   values: Record<string, unknown>;
   saved?: boolean;
   credentials?: { email: string; password: string };
-  link?: { url: string; expiresAt: string };
+  link?: { url: string; expiresAt: string; name?: string; phone?: string | null };
 };
 
 export async function createUserAction(_prev: UserFormState, formData: FormData): Promise<UserFormState> {
@@ -23,7 +23,9 @@ export async function createUserAction(_prev: UserFormState, formData: FormData)
   const parsed = userCreateSchema.safeParse(raw);
   if (!parsed.success) return { errors: flattenErrors(parsed.error), values: raw };
 
-  const password = parsed.data.password ?? generateTempPassword();
+  // La cuenta nace sin contraseña conocida: la persona la crea desde su enlace de invitación.
+  const password = generateTempPassword();
+  let created;
   try {
     const user = await createUser({
       name: parsed.data.name,
@@ -36,6 +38,7 @@ export async function createUserAction(_prev: UserFormState, formData: FormData)
       mustChangePassword: true,
     });
     await log("user", user.id, "creado", `${user.email} · rol ${user.role}${user.area ? ` · ${user.area}` : ""}${user.organizationName ? ` · ${user.organizationName}` : ""}`, actor.name);
+    created = user;
   } catch (err) {
     if (!isUniqueViolation(err)) console.error("Error creando usuario", err);
     return {
@@ -43,8 +46,9 @@ export async function createUserAction(_prev: UserFormState, formData: FormData)
       values: raw,
     };
   }
+  const { token, expiresAt } = await createPasswordReset(created.id, actor.name, INVITE_TTL_HOURS);
   revalidatePath("/admin/usuarios");
-  return { errors: {}, values: {}, saved: true, credentials: { email: parsed.data.email, password } };
+  return { errors: {}, values: {}, saved: true, link: { url: resetUrl(token), expiresAt, name: created.name, phone: created.phone ?? null } };
 }
 
 export async function updateUserAction(id: string, _prev: UserFormState, formData: FormData): Promise<UserFormState> {

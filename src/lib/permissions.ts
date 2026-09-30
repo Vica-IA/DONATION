@@ -22,12 +22,13 @@ export type Permission =
   | "users.manage"
   | "tasks.create"
   | "finance.view" // (admin, líderes y coordinadores)
-  | "finance.manage"; // (admin y coordinador de Financiero, ver canManageFinance)
+  | "finance.manage" // (admin y coordinador de Financiero, ver canManageFinance)
+  | "program.manage"; // programa, avisos y cuadrillas de la misión (admin, líderes y coordinadores)
 
 const MATRIX: Record<UserRole, readonly Permission[]> = {
-  admin: ["panel.view", "participants.manage", "participants.export", "participants.delete", "missions.manage", "users.manage", "tasks.create", "finance.view", "finance.manage"],
-  lider_grupo: ["panel.view", "participants.manage", "participants.export", "tasks.create", "finance.view"],
-  coordinador: ["panel.view", "tasks.create", "finance.view"],
+  admin: ["panel.view", "participants.manage", "participants.export", "participants.delete", "missions.manage", "users.manage", "tasks.create", "finance.view", "finance.manage", "program.manage"],
+  lider_grupo: ["panel.view", "participants.manage", "participants.export", "tasks.create", "finance.view", "program.manage"],
+  coordinador: ["panel.view", "tasks.create", "finance.view", "program.manage"],
   consulta: ["panel.view"],
 };
 
@@ -93,8 +94,8 @@ export function canManageFinance(actor: Actor): boolean {
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   admin: "Control total: misiones, participantes, tareas, finanzas, exportación y usuarios.",
-  lider_grupo: "Gestiona los participantes de su grupo (estado, rol, notas, contacto, aporte), ve sus datos de salud y exporta su lista. Crea y cierra tareas propias. Consulta las finanzas.",
-  coordinador: "Coordina un área: ve el equipo completo, crea y gestiona las tareas de su área y consulta las finanzas. Solo Logística ve datos de salud; solo Financiero registra movimientos.",
+  lider_grupo: "Gestiona los participantes de su grupo (estado, rol, notas, contacto, aporte), ve sus datos de salud y exporta su lista. Crea y cierra tareas propias, publica programa, avisos y cuadrillas. Consulta las finanzas.",
+  coordinador: "Coordina un área: ve el equipo completo, crea y gestiona las tareas de su área, publica programa, avisos y cuadrillas y consulta las finanzas. Solo Logística ve datos de salud; solo Financiero registra movimientos.",
   consulta: "Solo lectura: cupos, listas y fichas sin datos de salud, contacto de emergencia ni finanzas. No exporta ni edita.",
 };
 

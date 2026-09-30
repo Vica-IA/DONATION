@@ -49,6 +49,8 @@ export default async function UsersPage() {
                 <td>
                   {!u.active ? (
                     <span className="badge-cancelado">Desactivado</span>
+                  ) : u.mustChangePassword && !u.lastLoginAt ? (
+                    <span className="badge-lista_espera">Invitación pendiente</span>
                   ) : u.mustChangePassword ? (
                     <span className="badge-lista_espera">Contraseña temporal</span>
                   ) : (

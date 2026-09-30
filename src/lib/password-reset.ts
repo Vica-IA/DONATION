@@ -10,6 +10,8 @@ import { setPassword } from "./users";
 
 /** Vigencia de un enlace de restablecimiento. */
 export const RESET_TTL_HOURS = 48;
+/** Vigencia del enlace de invitación de una cuenta nueva. */
+export const INVITE_TTL_HOURS = 24 * 7;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -24,17 +26,17 @@ export function resetUrl(token: string): string {
  * usar de esa persona dejan de servir. El token solo existe en el enlace: en
  * la base queda su SHA-256.
  */
-export async function createPasswordReset(userId: string, actor: string): Promise<{ token: string; expiresAt: string }> {
+export async function createPasswordReset(userId: string, actor: string, ttlHours = RESET_TTL_HOURS): Promise<{ token: string; expiresAt: string }> {
   const db = await getDb();
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + RESET_TTL_HOURS * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
   await db.delete(passwordResets).where(and(eq(passwordResets.userId, userId), isNull(passwordResets.usedAt)));
   await db.insert(passwordResets).values({ id: crypto.randomUUID(), userId, tokenHash: hashToken(token), expiresAt, createdBy: actor });
   await log("user", userId, "enlace_restablecimiento", `vence ${expiresAt}`, actor);
   return { token, expiresAt };
 }
 
-export type ActiveReset = { id: string; expiresAt: string; user: { id: string; name: string; email: string } };
+export type ActiveReset = { id: string; expiresAt: string; user: { id: string; name: string; email: string; lastLoginAt: string | null } };
 
 /** Enlace vigente: existe, no se ha usado, no ha vencido y la cuenta está activa. */
 export async function findActiveReset(token: string): Promise<ActiveReset | null> {
@@ -42,14 +44,14 @@ export async function findActiveReset(token: string): Promise<ActiveReset | null
   const db = await getDb();
   const row = (
     await db
-      .select({ reset: passwordResets, user: { id: users.id, name: users.name, email: users.email, active: users.active } })
+      .select({ reset: passwordResets, user: { id: users.id, name: users.name, email: users.email, active: users.active, lastLoginAt: users.lastLoginAt } })
       .from(passwordResets)
       .innerJoin(users, eq(users.id, passwordResets.userId))
       .where(eq(passwordResets.tokenHash, hashToken(token)))
       .limit(1)
   )[0];
   if (!row || row.reset.usedAt || row.reset.expiresAt < nowIso() || !row.user.active) return null;
-  return { id: row.reset.id, expiresAt: row.reset.expiresAt, user: { id: row.user.id, name: row.user.name, email: row.user.email } };
+  return { id: row.reset.id, expiresAt: row.reset.expiresAt, user: { id: row.user.id, name: row.user.name, email: row.user.email, lastLoginAt: row.user.lastLoginAt } };
 }
 
 /** Fija la nueva contraseña y consume el enlace. Devuelve el usuario o null si el enlace no sirve. */

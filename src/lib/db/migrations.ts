@@ -230,4 +230,49 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `UPDATE missions SET departure_note = 'Viernes 9 de octubre, 6:00 p. m.', return_note = 'Lunes 12 de octubre, 11:00 p. m.' WHERE code = 'CHO-2026-01' AND departure_note IS NULL AND return_note IS NULL`,
     ],
   },
+  {
+    id: "0010_program_announcements_squads",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS itinerary_items (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        day TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT,
+        title TEXT NOT NULL,
+        place TEXT,
+        area TEXT,
+        notes TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS itinerary_mission_idx ON itinerary_items (mission_id, day, start_time)`,
+      `CREATE TABLE IF NOT EXISTS announcements (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS announcements_mission_idx ON announcements (mission_id, created_at)`,
+      `CREATE TABLE IF NOT EXISTS squads (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        name TEXT NOT NULL,
+        area TEXT,
+        leader_registration_id TEXT,
+        meeting_point TEXT,
+        notes TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS squads_mission_idx ON squads (mission_id)`,
+      `ALTER TABLE mission_registrations ADD COLUMN squad_id TEXT`,
+    ],
+  },
 ];

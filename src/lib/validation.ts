@@ -193,8 +193,6 @@ export const userCreateSchema = z
     name: trimmed(120).min(2, "Nombre requerido"),
     email,
     ...scopeFields,
-    // Vacío = se genera una contraseña temporal automáticamente.
-    password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),
   })
   .transform(normalizeScope)
   .refine(...scopeRefine)
@@ -258,6 +256,45 @@ export const financeEntrySchema = z
   .refine((d) => financeCategoryKind(d.category) === d.kind, { message: "La categoría no corresponde al tipo de movimiento", path: ["category"] });
 
 export type FinanceEntryInput = z.infer<typeof financeEntrySchema>;
+
+const hhmm = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora inválida (HH:MM)");
+const areaOrGeneral = z
+  .union([z.enum(values(AREAS)), z.literal("general"), z.literal("")])
+  .optional()
+  .transform((v) => (v === undefined || v === "" ? null : v));
+
+/** Actividad del programa de la misión. */
+export const itinerarySchema = z.object({
+  day: isoDate,
+  startTime: hhmm,
+  endTime: z
+    .union([hhmm, z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
+  title: trimmed(160).min(3, "Escribe la actividad"),
+  place: optionalText(160),
+  area: areaOrGeneral,
+  notes: optionalText(600),
+});
+export type ItineraryInput = z.infer<typeof itinerarySchema>;
+
+/** Aviso de la coordinación. */
+export const announcementSchema = z.object({
+  title: trimmed(140).min(3, "Escribe un título"),
+  body: z.string().trim().min(3, "Escribe el aviso").max(2000, "Máximo 2000 caracteres"),
+  pinned: z.boolean().default(false),
+});
+export type AnnouncementInput = z.infer<typeof announcementSchema>;
+
+/** Cuadrilla de trabajo. */
+export const squadSchema = z.object({
+  name: trimmed(80).min(2, "Escribe el nombre de la cuadrilla"),
+  area: areaOrGeneral,
+  leaderRegistrationId: z.string().trim().max(64).optional().default(""),
+  meetingPoint: optionalText(160),
+  notes: optionalText(600),
+});
+export type SquadInput = z.infer<typeof squadSchema>;
 
 export const passwordResetSchema = z.object({
   password: z.union([password, z.literal("")]).transform((v) => (v === "" ? null : v)),

@@ -83,6 +83,9 @@ export default async function ThanksPage({ params, searchParams }: Props) {
           <p className="mt-4 text-sm text-brand-800">Ya aceptaste las condiciones de participación. ¡Gracias!</p>
         ) : null}
         <div className="mt-6 flex flex-wrap gap-3">
+          <Link href={`/misiones/${mission.slug}`} className="btn-primary">
+            Ver programa y avisos de la misión
+          </Link>
           <Link href={`/misiones/${mission.slug}/confirmar`} className="btn-secondary">
             Editar mi respuesta
           </Link>

@@ -79,6 +79,18 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
           </nav>
         ) : null}
 
+        {base && mission && can(user.role, "program.manage") ? (
+          <nav className="flex flex-col gap-0.5">
+            <div className="kicker px-2.5 pb-1.5 !text-[#7fa99a]">En la misión</div>
+            <div className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+              <NavLink href={`${base}/programa`} label="Programa" />
+              <NavLink href={`${base}/avisos`} label="Avisos" />
+              <NavLink href={`${base}/cuadrillas`} label="Cuadrillas" />
+              <NavLink href={`/misiones/${mission.slug}`} label="Página pública" match="exact" />
+            </div>
+          </nav>
+        ) : null}
+
         {base ? (
           <nav className="hidden flex-col gap-0.5 lg:flex">
             <div className="kicker px-2.5 pb-1.5 !text-[#7fa99a]">Coordinadores</div>

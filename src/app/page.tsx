@@ -36,9 +36,14 @@ export default async function HomePage() {
                     {m.location ? ` · ${m.location}` : ""}
                   </p>
                 </div>
-                <Link href={`/misiones/${m.slug}/confirmar`} className="btn-primary shrink-0">
-                  Confirmar participación
-                </Link>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Link href={`/misiones/${m.slug}`} className="btn-secondary">
+                    Ver la misión
+                  </Link>
+                  <Link href={`/misiones/${m.slug}/confirmar`} className="btn-primary">
+                    Confirmar participación
+                  </Link>
+                </div>
               </article>
             ))
           )}
@@ -48,9 +53,14 @@ export default async function HomePage() {
           <section className="mt-10 space-y-3">
             <h2 className="section-title">Otras misiones</h2>
             {closed.map((m) => (
-              <article key={m.id} className="card py-4 text-sm">
-                <span className="font-semibold">{m.name}</span>
-                <span className="text-muted"> · {formatDateRange(m.startDate, m.endDate)} · inscripciones cerradas</span>
+              <article key={m.id} className="card flex flex-wrap items-center justify-between gap-3 py-4 text-sm">
+                <span>
+                  <span className="font-semibold">{m.name}</span>
+                  <span className="text-muted"> · {formatDateRange(m.startDate, m.endDate)} · inscripciones cerradas</span>
+                </span>
+                <Link href={`/misiones/${m.slug}`} className="btn-secondary">
+                  Ver la misión
+                </Link>
               </article>
             ))}
           </section>

@@ -21,10 +21,11 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
         <div className="card">
           {active ? (
             <>
-              <h1 className="text-lg font-semibold">Crea tu nueva contraseña</h1>
+              <h1 className="text-lg font-semibold">{active.user.lastLoginAt ? "Crea tu nueva contraseña" : "Crea tu contraseña"}</h1>
               <p className="mb-4 mt-1 text-sm text-muted">
-                Hola, {active.user.name}. Este enlace es para la cuenta <span className="font-semibold text-ink">{active.user.email}</span> y vence el{" "}
-                {formatDateTime(active.expiresAt)}.
+                Hola, {active.user.name}.{" "}
+                {active.user.lastLoginAt ? "Este enlace es para la cuenta" : "Te crearon una cuenta en el panel del equipo con el correo"}{" "}
+                <span className="font-semibold text-ink">{active.user.email}</span>. El enlace vence el {formatDateTime(active.expiresAt)}.
               </p>
               <ResetForm token={token} />
             </>

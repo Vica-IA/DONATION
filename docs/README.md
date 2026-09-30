@@ -9,7 +9,7 @@
 | [08.00 Misión Levantar Chocó Master Plan](08.00_MISION_CHOCO_MASTER_PLAN.md) | Plan maestro de la primera misión: fechas críticas, familia, vivienda, presupuesto, riesgos, GO/NO-GO. | v0.1 · plan de ejecución |
 | [09.01 Consentimiento informado · Misión Kairós Etapa 2](09.01_CONSENTIMIENTO_INFORMADO_MISION_KAIROS_ETAPA2.md) | Condiciones de participación para voluntarios (requisitos, riesgos, deberes, conducta, logística, datos, responsabilidad). | Sujeto a revisión jurídica antes de cada misión |
 | [10.00 MVP técnico](10.00_MVP_TECNICO.md) | Qué hace la plataforma hoy, arquitectura, modelo de datos, roles, siguientes pasos. | Se actualiza con cada entrega |
-| Prototipo "Misión Chocó · Coordinación" (archivo de diseño) | Referencia visual y funcional de la consola: resumen, itinerario, áreas, voluntarios, tareas y app del voluntario. | Implementado: consola, resumen, áreas y tareas. Pendiente: itinerario, transporte, finanzas, cuadrillas, app del voluntario |
+| Prototipo "Misión Chocó · Coordinación" (archivo de diseño) | Referencia visual y funcional de la consola: resumen, itinerario, áreas, voluntarios, tareas y app del voluntario. | Implementado: consola, resumen, áreas, tareas, finanzas, itinerario (programa), cuadrillas y la vista del voluntario como página pública. Pendiente: transporte |
 
 ## Cómo se usa cada documento en la plataforma
 
@@ -35,7 +35,9 @@
 | 2026-09-29 | Se retira la talla de camiseta. Las condiciones de participación se leen y aceptan dentro del formulario con una única casilla (antes: paso 2 con 17 casillas, imagen y firma); la aceptación por enlace personal usa la misma casilla única. |
 | 2026-09-29 | El administrador puede borrar una inscripción desde la ficha (con confirmación): se borran su aceptación de condiciones y, si la persona no tiene otras inscripciones, sus datos personales; queda en la bitácora. |
 | 2026-09-29 | El formulario público muestra la portada de Kairós Life (Misión Reconocimiento, etapa 2) y el logo de Grupo Kairós; los cupos confirmados dejan de verse en público y quedan solo en el panel. |
+| 2026-09-30 | Al crear un usuario (líder o coordinador) el panel genera un enlace de invitación de 7 días para que la persona cree su contraseña; la lista marca "Invitación pendiente". |
 | 2026-09-29 | La misión tiene salida y llegada (día y hora) editables desde el panel y visibles en el formulario; se retira la descripción provisional de la primera misión. |
+| 2026-09-30 | Página pública de la misión (`/misiones/choco-2026-01`) para todos los voluntarios: ahora y siguiente, avisos, programa por día, cuadrillas, logística y contactos de coordinación. En el panel, administrador, líderes y coordinadores publican avisos, arman el programa y organizan cuadrillas con las personas confirmadas. |
 
 ## Puntos por resolver entre documentos
 

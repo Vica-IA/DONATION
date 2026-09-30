@@ -148,14 +148,19 @@ async function main() {
     await page.getByRole("button", { name: "Salir" }).click();
     await page.waitForURL("**/admin/login**");
   };
-  const changePassword = async (current: string, next: string) => {
-    await page.waitForURL("**/admin/cuenta?obligatorio=1");
-    await page.fill("#currentPassword", current);
-    await page.fill("#newPassword", next);
-    await page.fill("#confirmPassword", next);
-    await page.getByRole("button", { name: "Cambiar contraseña" }).click();
-    // /admin?cuenta=ok redirige a la misión activa: esperar la URL final.
+  /** La persona abre su enlace (invitación o nueva contraseña), fija la contraseña y entra. */
+  const setPasswordFromLink = async (link: string, password: string) => {
+    await page.goto(`${BASE}${new URL(link).pathname}`); // el servidor de prueba corre en otro puerto que siteUrl()
+    await page.fill("#newPassword", password);
+    await page.fill("#confirmPassword", password);
+    await page.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
     await page.waitForURL(/\/admin\/m\/[^/?]+\?cuenta=ok$/);
+  };
+  const inviteLink = async () => {
+    await page.locator("#reset-link").waitFor();
+    const link = await page.inputValue("#reset-link");
+    assert.match(link, /\/admin\/restablecer\/[A-Za-z0-9_-]{20,}$/);
+    return link;
   };
 
   await page.goto(`${BASE}/admin`);
@@ -382,6 +387,134 @@ async function main() {
   assert.match(await body(page), /Inscripción eliminada|eliminada/);
   console.log("✓ borrar inscripción: confirmación, lista, ficha 404 y bitácora");
 
+  // ---------- En la misión: programa, avisos y cuadrillas ----------
+  await page.goto(`${base}/programa`);
+  let prog = await body(page);
+  assert.match(prog, /Programa de la misión/);
+  assert.match(prog, /0 actividades/);
+  await page.getByRole("button", { name: "Agregar al programa" }).click();
+  await page.getByText("Escribe la actividad").waitFor();
+  await page.selectOption("#day", "2026-10-10");
+  await page.fill("#startTime", "07:00");
+  await page.fill("#endTime", "08:00");
+  await page.fill("#title", "Desayuno y oración de la mañana");
+  await page.fill("#place", "Comedor de la escuela");
+  await page.selectOption("#area", "logistica");
+  await page.getByRole("button", { name: "Agregar al programa" }).click();
+  await page.getByText("Actividad agregada al programa.").waitFor();
+  await page.goto(`${base}/programa?dia=2026-10-10`);
+  assert.equal(await page.locator('[data-item-title="Desayuno y oración de la mañana"]').count(), 1);
+  prog = await body(page);
+  assert.match(prog, /7:00 a\. m\. – 8:00 a\. m\./);
+  assert.match(prog, /1 actividades/);
+  await page.goto(`${base}/programa?dia=2026-10-09`);
+  assert.equal(await page.locator('[data-item-title="Desayuno y oración de la mañana"]').count(), 0);
+  // editar y volver
+  await page.goto(`${base}/programa?dia=2026-10-10`);
+  await page.getByRole("link", { name: "Desayuno y oración de la mañana" }).click();
+  await page.waitForURL("**/programa/**");
+  await page.fill("#title", "Desayuno, oración y devocional");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.getByText("Cambios guardados.").waitFor();
+  await page.goto(`${base}/programa?dia=2026-10-10`);
+  assert.equal(await page.locator('[data-item-title="Desayuno, oración y devocional"]').count(), 1);
+  console.log("✓ programa: actividad creada por día, editada y listada");
+
+  await page.goto(`${base}/avisos`);
+  await page.getByRole("button", { name: "Publicar aviso" }).click();
+  await page.getByText("Escribe un título").waitFor();
+  await page.fill("#title", "Cambio de hora de salida");
+  await page.fill("#body", "Salimos a las 5:30 p. m. desde el punto de encuentro. Llegar 30 minutos antes.");
+  await page.getByLabel(/Fijar arriba/).check();
+  await page.getByRole("button", { name: "Publicar aviso" }).click();
+  await page.getByText("Aviso publicado.").waitFor();
+  await page.fill("#title", "Bienvenida");
+  await page.fill("#body", "Gracias por confirmar. Revisa el programa cada mañana.");
+  await page.getByRole("button", { name: "Publicar aviso" }).click();
+  await page.getByText("Aviso publicado.").waitFor();
+  await page.goto(`${base}/avisos`);
+  assert.equal(await page.locator("[data-announcement-title]").count(), 2);
+  assert.equal(await page.locator("[data-announcement-title]").first().getAttribute("data-announcement-title"), "Cambio de hora de salida"); // el fijado va primero
+  assert.match(await body(page), /Fijado/);
+  console.log("✓ avisos: publicados, el fijado primero");
+
+  await page.goto(`${base}/cuadrillas`);
+  assert.match(await body(page), /Cuadrillas/);
+  await page.fill("#name", "Cuadrilla Obra 1");
+  await page.selectOption("#area", "logistica");
+  await page.fill("#meetingPoint", "Frente a la escuela, 7:00 a. m.");
+  await page.getByRole("button", { name: "Crear cuadrilla" }).click();
+  await page.waitForURL(/\/cuadrillas\/[^/?]+$/);
+  const squadUrl = page.url();
+  let sq = await body(page);
+  assert.match(sq, /Cuadrilla Obra 1/);
+  assert.match(sq, /0 integrantes/);
+  // solo personas confirmadas: Juan y María aparecen; Pedro (lista de espera) no
+  assert.match(sq, /Juan Prueba Uno/);
+  assert.match(sq, /María Prueba Dos/);
+  assert.doesNotMatch(sq, /Pedro Prueba Tres/);
+  await page.getByLabel(/Juan Prueba Uno/).check();
+  await page.getByRole("button", { name: "Guardar integrantes" }).click();
+  await page.waitForURL("**/cuadrillas/**?integrantes=ok");
+  sq = await body(page);
+  assert.match(sq, /Integrantes guardados/);
+  assert.match(sq, /1 integrantes/);
+  await page.selectOption("#leaderRegistrationId", { label: "Juan Prueba Uno" });
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await page.getByText("Cambios guardados.").waitFor();
+  await page.goto(`${base}/cuadrillas`);
+  assert.equal(await page.locator('[data-squad-name="Cuadrilla Obra 1"]').count(), 1);
+  assert.match(await body(page), /Líder:\s*Juan Prueba Uno/);
+  // la ficha de la persona muestra su cuadrilla
+  await page.goto(`${base}/voluntarios/${registrationId}`);
+  assert.match(await body(page), /Cuadrilla Obra 1/);
+  // una segunda cuadrilla no puede tomar a Juan (ya está en otra)
+  await page.goto(`${base}/cuadrillas`);
+  await page.fill("#name", "Cuadrilla Salud");
+  await page.getByRole("button", { name: "Crear cuadrilla" }).click();
+  await page.waitForURL(/\/cuadrillas\/[^/?]+$/);
+  assert.ok(await page.getByLabel(/Juan Prueba Uno/).isDisabled(), "Juan aparece atenuado en la segunda cuadrilla");
+  assert.match(await body(page), /en Cuadrilla Obra 1/);
+  await page.getByRole("button", { name: "Eliminar cuadrilla" }).click();
+  await page.waitForURL(/\/cuadrillas(\?.*)?$/);
+  assert.equal(await page.locator('[data-squad-name="Cuadrilla Salud"]').count(), 0);
+  assert.equal(await page.locator('[data-squad-name="Cuadrilla Obra 1"]').count(), 1);
+  void squadUrl;
+  console.log("✓ cuadrillas: creada, integrantes confirmados, líder, exclusividad, eliminada");
+
+  // Página pública de la misión (sin sesión también)
+  await page.goto(`${BASE}/misiones/${SLUG}`);
+  let pub = await body(page);
+  assert.match(pub, /Misión Levantar Chocó/);
+  assert.match(pub, /Avisos/);
+  assert.match(pub, /Cambio de hora de salida/);
+  assert.match(pub, /Salimos a las 5:30 p\. m\./);
+  assert.match(pub, /Cuadrillas/);
+  assert.match(pub, /Cuadrilla Obra 1/);
+  assert.match(pub, /Líder:\s*Juan P\./);
+  assert.doesNotMatch(pub, /Juan Prueba Uno/); // nombres abreviados en público
+  assert.doesNotMatch(pub, /María P\./); // María no está en ninguna cuadrilla
+  assert.doesNotMatch(pub, /Ana Pérez/); // nada sensible en público
+  assert.match(pub, /Salida:\s*Viernes 9 de octubre, 6:00 p\. m\./);
+  assert.match(pub, /Aporte por persona:\s*\$\s?400\.000/);
+  assert.equal(await page.locator('img[alt^="Kairós Life"]').count(), 1);
+  await page.goto(`${BASE}/misiones/${SLUG}?dia=2026-10-10`);
+  pub = await body(page);
+  assert.match(pub, /Desayuno, oración y devocional/);
+  assert.match(pub, /7:00 a\. m\. – 8:00 a\. m\./);
+  assert.match(pub, /Comedor de la escuela/);
+  await page.goto(`${BASE}/misiones/${SLUG}?dia=2026-10-09`);
+  pub = await body(page);
+  assert.match(pub, /El programa de este día se publicará pronto/);
+  assert.match(pub, /Primera actividad:\s*Desayuno, oración y devocional · sábado, 10 de oct, 7:00 a\. m\./i); // antes de la misión, el bloque superior anuncia la primera actividad sin importar el día elegido
+  // desde el inicio y desde la confirmación se llega a la página pública
+  await page.goto(`${BASE}/`);
+  await page.getByRole("link", { name: "Ver la misión" }).first().click();
+  await page.waitForURL(`**/misiones/${SLUG}`);
+  const missingSlug = await page.goto(`${BASE}/misiones/no-existe`);
+  assert.equal(missingSlug?.status(), 404);
+  console.log("✓ página pública de la misión: avisos, programa por día, cuadrillas abreviadas, enlaces");
+
   // ---------- Usuarios y roles ----------
   await page.goto(`${BASE}/admin/usuarios`);
   assert.match(await body(page), /Usuarios del panel/);
@@ -396,9 +529,8 @@ async function main() {
   await page.getByText("Selecciona el área que coordina").waitFor();
   await page.selectOption("#area", "logistica");
   await page.getByRole("button", { name: "Crear usuario" }).click();
-  await page.getByText("Credenciales temporales").waitFor();
-  const coordPassword = (await page.locator("code.font-bold").textContent())?.trim();
-  assert.ok(coordPassword && coordPassword.length >= 8);
+  const coordLink = await inviteLink();
+  assert.match(await body(page), /Cuenta creada para Carolina Coordinadora/);
   // duplicado
   await page.goto(`${BASE}/admin/usuarios/nuevo`);
   await page.fill("#name", "Otra");
@@ -413,19 +545,18 @@ async function main() {
   await page.selectOption("#role", "lider_grupo");
   const orgOpts = await page.$$eval("#organizationId option", (o) => o.map((x) => ({ v: (x as HTMLOptionElement).value, t: x.textContent })));
   await page.selectOption("#organizationId", orgOpts.find((o) => o.t?.includes("Kairós"))!.v);
-  await page.fill("#password", "lider-2026-kairos");
   await page.getByRole("button", { name: "Crear usuario" }).click();
-  await page.getByText("Credenciales temporales").waitFor();
+  const liderLink = await inviteLink();
   // Consulta
   await page.goto(`${BASE}/admin/usuarios/nuevo`);
   await page.fill("#name", "Luis Lector");
   await page.fill("#email", "lector@prueba.local");
   await page.selectOption("#role", "consulta");
-  await page.fill("#password", "lectura-2026");
   await page.getByRole("button", { name: "Crear usuario" }).click();
-  await page.getByText("Credenciales temporales").waitFor();
+  const lectorLink = await inviteLink();
   await page.goto(`${BASE}/admin/usuarios`);
   const usersBody = await body(page);
+  assert.match(usersBody, /Invitación pendiente/);
   assert.match(usersBody, /Carolina Coordinadora/);
   assert.match(usersBody, /Logística/);
   assert.match(usersBody, /Lía Líder/);
@@ -443,7 +574,7 @@ async function main() {
   await page.fill("#phone", "3005550009");
   await page.selectOption("#role", "consulta");
   await page.getByRole("button", { name: "Crear usuario" }).click();
-  await page.getByText("Credenciales temporales").waitFor();
+  const firstInvite = await inviteLink();
   await page.goto(`${BASE}/admin/usuarios`);
   await page.getByRole("row", { name: /Enlace Prueba/ }).getByRole("link", { name: "Editar" }).click();
   await page.waitForURL("**/admin/usuarios/**");
@@ -451,6 +582,7 @@ async function main() {
   await page.locator("#reset-link").waitFor();
   const resetLink = await page.inputValue("#reset-link");
   assert.match(resetLink, /\/admin\/restablecer\/[A-Za-z0-9_-]{20,}$/);
+  assert.notEqual(resetLink, firstInvite, "generar otro enlace produce uno distinto");
   assert.match(await body(page), /Enviar por WhatsApp/);
   // la ficha propia no permite restablecerse: remite a Mi cuenta
   await page.goto(`${BASE}/admin/usuarios`);
@@ -462,8 +594,12 @@ async function main() {
   await logoutNow();
   // la persona abre el enlace sin sesión (el servidor de prueba corre en otro puerto que siteUrl())
   const linkPath = new URL(resetLink).pathname;
+  const firstGone = await page.goto(`${BASE}${new URL(firstInvite).pathname}`);
+  assert.match(await body(page), /Este enlace ya no sirve/); // la invitación inicial quedó anulada por el nuevo enlace
+  assert.equal(firstGone?.status(), 200);
   await page.goto(`${BASE}${linkPath}`);
   assert.match(await body(page), /Enlace Prueba/);
+  assert.match(await body(page), /Crea tu contraseña/);
   await page.fill("#newPassword", "enlace-nueva-2026");
   await page.fill("#confirmPassword", "otra-distinta");
   await page.getByRole("button", { name: "Guardar contraseña y entrar" }).click();
@@ -485,8 +621,7 @@ async function main() {
 
   // ---------- Coordinador ----------
   await logoutNow();
-  await loginAs("coordinadora@prueba.local", coordPassword!);
-  await changePassword(coordPassword!, "coordina-2026");
+  await setPasswordFromLink(coordLink, "coordina-2026");
   let b = await body(page);
   assert.match(b, /Coordinador de área/);
   assert.equal(await page.getByRole("link", { name: "Usuarios" }).count(), 0);
@@ -519,6 +654,15 @@ async function main() {
   await page.waitForURL("**/finanzas/**");
   assert.equal(await page.locator("#concept").count(), 0);
   assert.match(await body(page), /Solo el administrador y la coordinación de Financiero/);
+  // programa y avisos: coordina, así que publica
+  assert.ok((await page.getByRole("link", { name: "Programa" }).count()) > 0);
+  await page.goto(`${base}/avisos`);
+  await page.fill("#title", "Aviso de Logística");
+  await page.fill("#body", "Traer botas y linterna para la jornada de mañana.");
+  await page.getByRole("button", { name: "Publicar aviso" }).click();
+  await page.getByText("Aviso publicado.").waitFor();
+  await page.goto(`${BASE}/misiones/${SLUG}`);
+  assert.match(await body(page), /Aviso de Logística/);
   // voluntarios: ve datos de salud (Logística) pero no gestiona
   await page.goto(`${base}/voluntarios/${registrationId}`);
   b = await body(page);
@@ -526,13 +670,13 @@ async function main() {
   assert.equal(await page.locator("#status").count(), 0);
   assert.match(b, /Tu rol no gestiona/);
   await logoutNow();
-  await loginAs("coordinadora@prueba.local", coordPassword!);
-  await page.getByText("Correo o contraseña incorrectos.").waitFor();
-  console.log("✓ coordinador: cambio obligatorio de contraseña, tareas de su área, salud visible, sin gestión");
+  await loginAs("coordinadora@prueba.local", "coordina-2026"); // la contraseña creada desde el enlace sirve para entrar
+  await page.waitForURL(/\/admin\/m\/[^/?]+$/);
+  await logoutNow();
+  console.log("✓ coordinador: contraseña creada desde la invitación, tareas de su área, salud visible, sin gestión");
 
   // ---------- Líder de grupo (Grupo Kairós) ----------
-  await loginAs("lider@prueba.local", "lider-2026-kairos");
-  await changePassword("lider-2026-kairos", "lider-nueva-2026");
+  await setPasswordFromLink(liderLink, "lider-nueva-2026");
   b = await body(page);
   assert.match(b, /Líder de grupo/);
   await page.goto(`${base}/voluntarios`);
@@ -555,8 +699,7 @@ async function main() {
   console.log("✓ líder de grupo: solo su grupo (lista, ficha, CSV), gestiona y ve salud");
 
   // ---------- Consulta ----------
-  await loginAs("lector@prueba.local", "lectura-2026");
-  await changePassword("lectura-2026", "lectura-nueva-2026");
+  await setPasswordFromLink(lectorLink, "lectura-nueva-2026");
   b = await body(page);
   assert.doesNotMatch(b, /Descargar CSV/);
   assert.equal(await page.getByRole("link", { name: "CSV", exact: true }).count(), 0);
@@ -566,6 +709,14 @@ async function main() {
   assert.equal(await page.getByRole("link", { name: "Finanzas" }).count(), 0);
   await page.goto(`${base}/finanzas`);
   await page.waitForURL(/\/admin\/m\/[^/?]+\?denegado=1$/);
+  assert.equal(await page.getByRole("link", { name: "Programa" }).count(), 0);
+  await page.goto(`${base}/programa?dia=2026-10-10`);
+  assert.equal(await page.getByRole("button", { name: "Agregar al programa" }).count(), 0);
+  assert.match(await body(page), /Desayuno, oración y devocional/); // sí lo consulta
+  await page.goto(`${base}/avisos`);
+  assert.equal(await page.getByRole("button", { name: "Publicar aviso" }).count(), 0);
+  await page.goto(`${base}/cuadrillas`);
+  assert.equal(await page.getByRole("button", { name: "Crear cuadrilla" }).count(), 0);
   const finDenied = await page.request.get(`${base}/finanzas/export`);
   assert.equal(finDenied.status(), 403);
   await page.goto(`${base}/voluntarios`);

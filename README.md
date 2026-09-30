@@ -12,7 +12,9 @@ Esta es la **primera iteración operativa (MVP)**, enfocada en la Misión Levant
 - **Aporte y requisitos de viaje**: seguimiento del aporte económico por persona, póliza de accidentes y contacto de emergencia completo.
 - **Consola de coordinación**: centro de misión (fase, días a la salida, criterios Go / No-Go, avance por área, pendientes críticos), coordinación por áreas y tablero de tareas.
 - **Finanzas por misión**: presupuesto de gastos (proyectado), compromisos y ejecución por categoría; ingresos por fuente (donaciones, patrocinios, recaudación) más los aportes de las personas voluntarias calculados desde sus fichas; balance actual y proyectado, faltante por recaudar, movimientos con filtros, edición y CSV. Registran el administrador y la coordinación de Financiero; líderes y coordinadores consultan.
-- **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña; cambia la suya en Mi cuenta y, si la olvida, un administrador le genera un enlace de un solo uso (48 horas) para crear una nueva, o le asigna una temporal. Roles: administrador (control total), líder de grupo (KAIROS, Fundación Pálpitos: gestiona su gente), coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional: gestiona las tareas de su área) y solo consulta.
+- **Usuarios y roles**: cada persona del equipo entra con su correo y contraseña; al crear la cuenta, el panel genera un enlace de invitación (7 días, un solo uso) con el que la persona crea su propia contraseña; cada quien la cambia en Mi cuenta y, si la olvida, un administrador le genera otro enlace o le asigna una temporal. Roles: administrador (control total), líder de grupo (KAIROS, Fundación Pálpitos: gestiona su gente), coordinador de área (Logística, Transporte, Alimentación, Financiero, Espiritual, Emocional: gestiona las tareas de su área) y solo consulta.
+- **Página pública de la misión** en `/misiones/choco-2026-01`: la ven todos los voluntarios sin contraseña, desde el celular. Muestra qué está pasando ahora y qué sigue, los avisos de la coordinación (los fijados primero), el programa día por día, las cuadrillas de trabajo (con líder y punto de encuentro; nombres abreviados), la logística (salida, llegada, punto de encuentro, aporte) y los contactos de coordinación por área. Sin datos personales.
+- **En la misión (panel)**: administrador, líderes y coordinadores publican avisos, arman el programa por día y organizan cuadrillas con las personas confirmadas (una persona pertenece a una sola cuadrilla). Todo se refleja de inmediato en la página pública.
 - **Varias misiones**: crea y edita misiones desde el panel.
 
 La documentación del proyecto está en [`docs/`](docs/), incluido el detalle técnico de esta iteración en [`docs/10.00_MVP_TECNICO.md`](docs/10.00_MVP_TECNICO.md).
@@ -72,7 +74,7 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
 
    Mientras no exista la base en Turso, puedes definir `ALLOW_EPHEMERAL_DB=true` para revisar el sitio con una base temporal (se reinicia sola y el formulario público queda cerrado). Quítala al conectar Turso.
 
-4. **Deploy.** Al primer arranque la app crea las tablas, carga la misión inicial y el primer administrador. Entra a `/admin`, crea las cuentas del equipo en "Usuarios" (cada una recibe una contraseña temporal que debe cambiar al entrar; si alguien la olvida, genera desde su ficha un enlace para crear una nueva), revisa fechas, cupos y punto de encuentro, y comparte el enlace del formulario.
+4. **Deploy.** Al primer arranque la app crea las tablas, carga la misión inicial y el primer administrador. Entra a `/admin`, crea las cuentas de líderes y coordinadores en "Usuarios" y envíales el enlace de invitación (copiar o WhatsApp) con el que crean su contraseña, revisa fechas, cupos y punto de encuentro, y comparte el enlace del formulario.
 
 ### Rescate del único administrador
 
@@ -89,9 +91,9 @@ Cada valor de `ADMIN_PASSWORD_RESET` se aplica una sola vez (queda anotado en la
 | Rol | Puede |
 |---|---|
 | Administrador | Control total: misiones, participantes (incluido borrar inscripciones), tareas, finanzas, exportación y usuarios. |
-| Líder de grupo | Gestionar los participantes de su grupo (estado, rol, notas, contacto, aporte), ver sus datos de salud, exportar su lista, crear y cerrar tareas propias. Consultar las finanzas. |
-| Coordinador de área | Ver el equipo completo, gestionar las tareas de su área y consultar las finanzas. Solo el de Logística ve datos de salud (primeros auxilios); solo el de Financiero registra y edita movimientos financieros. |
-| Solo consulta | Ver cupos, listas, fichas y tareas sin datos de salud, contacto de emergencia ni finanzas. No exporta ni edita. |
+| Líder de grupo | Gestionar los participantes de su grupo (estado, rol, notas, contacto, aporte), ver sus datos de salud, exportar su lista, crear y cerrar tareas propias. Consultar las finanzas. Publicar avisos, armar el programa y organizar cuadrillas. |
+| Coordinador de área | Ver el equipo completo, gestionar las tareas de su área y consultar las finanzas. Publicar avisos, armar el programa y organizar cuadrillas. Solo el de Logística ve datos de salud (primeros auxilios); solo el de Financiero registra y edita movimientos financieros. |
+| Solo consulta | Ver cupos, listas, fichas, tareas, programa, avisos y cuadrillas sin datos de salud, contacto de emergencia ni finanzas. No exporta ni edita. |
 
 La matriz de permisos vive en `src/lib/permissions.ts`. Las contraseñas se guardan con scrypt; cambiar la contraseña cierra las demás sesiones de esa cuenta.
 
@@ -100,10 +102,11 @@ La matriz de permisos vive en `src/lib/permissions.ts`. Las contraseñas se guar
 ```text
 src/app/                      rutas (App Router)
   page.tsx                    inicio público: convocatorias abiertas
+  misiones/[slug]             página pública de la misión: ahora / siguiente, avisos, programa, cuadrillas, logística
   misiones/[slug]/confirmar   formulario público + acción de servidor
   misiones/[slug]/gracias     confirmación de envío
   misiones/[slug]/condiciones/[id]  aceptación por enlace personal cuando cambia la versión de las condiciones
-  admin/m/[missionId]/        consola de una misión: resumen, voluntarios, tareas, áreas, finanzas, editar, CSV
+  admin/m/[missionId]/        consola de una misión: resumen, voluntarios, tareas, áreas, finanzas, programa, avisos, cuadrillas, editar, CSV
   admin/(shell)/              páginas globales del panel: misiones, usuarios, mi cuenta
   admin/login                 acceso
 src/lib/
@@ -115,6 +118,7 @@ src/lib/
   permissions.ts              roles, alcances (grupo / área) y permisos
   tasks.ts                    tareas por misión y área
   finance.ts                  movimientos financieros: presupuesto, compromisos, ejecución, aportes y proyecciones
+  program.ts                  programa por día, avisos y cuadrillas de la misión (y qué actividad va ahora)
   mission-timeline.ts         fases y días a la salida de una misión
 src/components/admin-shell.tsx  barra lateral y encabezados del panel
   db/                         esquema Drizzle, migraciones SQL y semilla

@@ -115,6 +115,8 @@ export const missionRegistrations = sqliteTable(
     paymentStatus: text("payment_status").notNull().default("pendiente"), // PAYMENT_STATUS
     paymentAmount: integer("payment_amount"), // COP
     paymentNotes: text("payment_notes"),
+    /** Cuadrilla a la que pertenece durante la misión (tabla squads). */
+    squadId: text("squad_id"),
     ...timestamps,
   },
   (t) => [
@@ -240,6 +242,63 @@ export const financeEntries = sqliteTable(
   (t) => [index("finance_mission_idx").on(t.missionId, t.kind, t.status), index("finance_category_idx").on(t.missionId, t.category)],
 );
 
+/** Programa de la misión: actividades por día y hora (visibles en la página pública). */
+export const itineraryItems = sqliteTable(
+  "itinerary_items",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    day: text("day").notNull(), // YYYY-MM-DD
+    startTime: text("start_time").notNull(), // HH:MM
+    endTime: text("end_time"), // HH:MM
+    title: text("title").notNull(),
+    place: text("place"),
+    area: text("area"), // AREAS | 'general' | null
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("itinerary_mission_idx").on(t.missionId, t.day, t.startTime)],
+);
+
+/** Avisos de la coordinación durante la misión (página pública). */
+export const announcements = sqliteTable(
+  "announcements",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("announcements_mission_idx").on(t.missionId, t.createdAt)],
+);
+
+/** Cuadrillas: equipos de trabajo durante la misión, con líder y punto de encuentro. */
+export const squads = sqliteTable(
+  "squads",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    name: text("name").notNull(),
+    area: text("area"), // AREAS | 'general' | null
+    leaderRegistrationId: text("leader_registration_id"), // inscripción que lidera (debe ser integrante)
+    meetingPoint: text("meeting_point"),
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("squads_mission_idx").on(t.missionId)],
+);
+
 /** Bitácora mínima de actividad (principio de trazabilidad). */
 export const activityLog = sqliteTable("activity_log", {
   id: text("id").primaryKey(),
@@ -261,3 +320,6 @@ export type PasswordReset = typeof passwordResets.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type ItineraryItem = typeof itineraryItems.$inferSelect;
+export type Announcement = typeof announcements.$inferSelect;
+export type Squad = typeof squads.$inferSelect;

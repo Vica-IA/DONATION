@@ -32,6 +32,26 @@ function Credentials({ credentials }: { credentials: { email: string; password: 
   );
 }
 
+/** Enlace de un solo uso (invitación o nueva contraseña) con copia y envío por WhatsApp. */
+function LinkBox({ title, url, expiresAt, message, phone, inputId = "reset-link" }: { title: string; url: string; expiresAt: string; message: string; phone?: string | null; inputId?: string }) {
+  const wa = phone ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}` : null;
+  return (
+    <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900" role="status">
+      <p className="font-semibold">{title}</p>
+      <input id={inputId} readOnly value={url} className="input mt-2 text-xs" onFocus={(e) => e.currentTarget.select()} />
+      <p className="mt-1 text-xs text-brand-800">Vence el {formatDateTime(expiresAt)}. Un solo uso; si generas otro, este deja de servir.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <CopyButton text={url} />
+        {wa ? (
+          <a className="btn-accent" href={wa} target="_blank" rel="noopener noreferrer">
+            Enviar por WhatsApp
+          </a>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /** Rol + alcance: el grupo aparece para líderes y el área para coordinadores. */
 function RoleScope({
   initialRole,
@@ -101,8 +121,16 @@ export function CreateUserForm({ organizations }: { organizations: Org[] }) {
   const { errors, values } = state;
   return (
     <form action={formAction} className="card space-y-4" noValidate>
-      {state.credentials ? <Credentials credentials={state.credentials} /> : null}
-      {state.credentials ? <h2 className="section-title">Crear otro usuario</h2> : null}
+      {state.link ? (
+        <LinkBox
+          title={`Cuenta creada para ${state.link.name ?? "la persona"}. Envíale este enlace de invitación (se muestra una sola vez).`}
+          url={state.link.url}
+          expiresAt={state.link.expiresAt}
+          phone={state.link.phone}
+          message={`Hola ${state.link.name ?? ""}, te crearon una cuenta en el panel del equipo de DONATION. Con este enlace creas tu contraseña (vale 7 días y una sola vez): ${state.link.url}`}
+        />
+      ) : null}
+      {state.link ? <h2 className="section-title">Crear otro usuario</h2> : null}
       {errors._form ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errors._form}</div> : null}
       <Field label="Nombre" htmlFor="name" error={errors.name} required>
         <input id="name" name="name" className={`input${errors.name ? " input-error" : ""}`} defaultValue={str(values, "name")} />
@@ -116,9 +144,7 @@ export function CreateUserForm({ organizations }: { organizations: Org[] }) {
         </Field>
       </div>
       <RoleScope initialRole={str(values, "role", "coordinador")} initialOrganizationId={str(values, "organizationId")} initialArea={str(values, "area")} organizations={organizations} errors={errors} />
-      <Field label="Contraseña temporal" htmlFor="password" error={errors.password} help="Déjala vacía para generar una automáticamente. La persona deberá cambiarla al entrar.">
-        <input id="password" name="password" type="text" autoComplete="off" className={`input${errors.password ? " input-error" : ""}`} />
-      </Field>
+      <p className="text-xs text-muted">Al crear la cuenta se genera un enlace de invitación (7 días, un solo uso) con el que la persona crea su propia contraseña y entra.</p>
       <button type="submit" className="btn-primary" disabled={pending}>
         {pending ? "Creando…" : "Crear usuario"}
       </button>
@@ -174,8 +200,6 @@ export function ResetLinkForm({ user }: { user: PublicUser }) {
   const action = createResetLinkAction.bind(null, user.id);
   const [state, formAction, pending] = useActionState<UserFormState, FormData>(action, EMPTY);
   const { errors, link } = state;
-  const message = link ? `Hola ${user.name}, con este enlace creas tu nueva contraseña del panel DONATION (vale 48 horas y una sola vez): ${link.url}` : "";
-  const wa = link && user.phone ? `https://wa.me/${user.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}` : null;
   return (
     <form action={formAction} className="card space-y-4">
       <h2 className="section-title">Enlace para crear nueva contraseña</h2>
@@ -184,19 +208,13 @@ export function ResetLinkForm({ user }: { user: PublicUser }) {
       </p>
       {errors._form ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errors._form}</div> : null}
       {link ? (
-        <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900" role="status">
-          <p className="font-semibold">Enlace listo (se muestra una sola vez)</p>
-          <input id="reset-link" readOnly value={link.url} className="input mt-2 text-xs" onFocus={(e) => e.currentTarget.select()} />
-          <p className="mt-1 text-xs text-brand-800">Vence el {formatDateTime(link.expiresAt)}. Si generas otro, este deja de servir.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <CopyButton text={link.url} />
-            {wa ? (
-              <a className="btn-accent" href={wa} target="_blank" rel="noopener noreferrer">
-                Enviar por WhatsApp
-              </a>
-            ) : null}
-          </div>
-        </div>
+        <LinkBox
+          title="Enlace listo (se muestra una sola vez)"
+          url={link.url}
+          expiresAt={link.expiresAt}
+          phone={user.phone}
+          message={`Hola ${user.name}, con este enlace creas tu nueva contraseña del panel DONATION (vale 48 horas y una sola vez): ${link.url}`}
+        />
       ) : null}
       <button type="submit" className="btn-primary" disabled={pending}>
         {pending ? "Generando…" : link ? "Generar otro enlace" : "Generar enlace"}

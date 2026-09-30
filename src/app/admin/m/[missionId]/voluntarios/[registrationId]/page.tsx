@@ -9,6 +9,7 @@ import { siteUrl } from "@/lib/config";
 import { getRegistration, listOrganizations, missionHasTerms } from "@/lib/data";
 import { formatCOP, formatDate, formatDateTime } from "@/lib/format";
 import { can, canManageRegistration, canSeeSensitive } from "@/lib/permissions";
+import { getSquad } from "@/lib/program";
 import { deleteRegistrationAction } from "./actions";
 import { ParticipantForm } from "./form";
 
@@ -33,6 +34,7 @@ export default async function ParticipantPage({
   const [detail, organizations] = await Promise.all([getRegistration(id), listOrganizations()]);
   if (!detail || detail.mission.id !== missionId) notFound();
   const { registration: r, volunteer: v, organization: o, mission, activity, termsAcceptance, acceptances } = detail;
+  const squad = r.squadId ? await getSquad(r.squadId) : null;
   // Un líder de grupo solo abre fichas de su grupo.
   if (user.role === "lider_grupo" && user.organizationId !== v.organizationId) notFound();
   const canManage = canManageRegistration(user, v.organizationId);
@@ -58,6 +60,16 @@ export default async function ParticipantPage({
     ["Respuesta", labelOf(ATTENDANCE, r.attendance)],
     ["Rol preferido", labelOf(ROLES, r.preferredRole) || "—"],
     ["Rol asignado", labelOf(ROLES, r.assignedRole) || "—"],
+    [
+      "Cuadrilla",
+      squad ? (
+        <Link href={`${base}/cuadrillas/${squad.id}`} className="font-semibold text-brand-700 hover:underline">
+          {squad.name}
+        </Link>
+      ) : (
+        "Sin cuadrilla"
+      ),
+    ],
     ["Habilidades", skills.length ? skills.map((s) => labelOf(SKILLS, s)).join(", ") : "—"],
     ["Experiencia en obra", v.constructionExperience ? "Sí" : "No"],
     ["Aporte", `${labelOf(PAYMENT_STATUS, r.paymentStatus)}${r.paymentAmount ? ` · ${formatCOP(r.paymentAmount)}` : ""}${r.paymentNotes ? ` · ${r.paymentNotes}` : ""}`],

@@ -21,7 +21,11 @@ export function todayBogota(): string {
   return fmt.format(new Date());
 }
 
-function addDays(iso: string, days: number): string {
+export function nowBogotaTime(): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+}
+
+export function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);

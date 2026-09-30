@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
 import { MissionCover, MissionLogo } from "@/components/mission-brand";
@@ -76,6 +77,11 @@ export default async function ConfirmPage({ params }: Props) {
               Al final del formulario están las <span className="font-medium text-ink">condiciones de participación</span>: para enviarlo debes leerlas y aceptarlas.
             </p>
           ) : null}
+          <p className="mt-3 text-sm">
+            <Link href={`/misiones/${mission.slug}`} className="font-semibold text-brand-700 underline-offset-2 hover:underline">
+              Ver el programa, los avisos y las cuadrillas de la misión →
+            </Link>
+          </p>
         </header>
 
         {isEphemeralDb() ? (
