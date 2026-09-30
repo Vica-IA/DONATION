@@ -153,11 +153,12 @@ export const termsAcceptanceSchema = z.object({
 });
 
 const email = z.string().trim().toLowerCase().email("Correo inválido").max(120);
-const password = z.string().min(PASSWORD_MIN_LENGTH, `Mínimo ${PASSWORD_MIN_LENGTH} caracteres`).max(200);
+// Las contraseñas se recortan en los extremos: los teclados de celular añaden espacios al autocompletar.
+const password = z.string().trim().min(PASSWORD_MIN_LENGTH, `Mínimo ${PASSWORD_MIN_LENGTH} caracteres`).max(200);
 
 export const loginSchema = z.object({
   email,
-  password: z.string().min(1, "Escribe tu contraseña").max(200),
+  password: z.string().trim().min(1, "Escribe tu contraseña").max(200),
 });
 
 const scopeFields = {
@@ -266,15 +267,15 @@ export const passwordResetSchema = z.object({
 export const resetWithTokenSchema = z
   .object({
     newPassword: password,
-    confirmPassword: z.string().max(200),
+    confirmPassword: z.string().trim().max(200),
   })
   .refine((d) => d.newPassword === d.confirmPassword, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] });
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Escribe tu contraseña actual").max(200),
+    currentPassword: z.string().trim().min(1, "Escribe tu contraseña actual").max(200),
     newPassword: password,
-    confirmPassword: z.string().max(200),
+    confirmPassword: z.string().trim().max(200),
   })
   .refine((d) => d.newPassword === d.confirmPassword, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] })
   .refine((d) => d.newPassword !== d.currentPassword, { message: "La nueva contraseña debe ser distinta", path: ["newPassword"] });

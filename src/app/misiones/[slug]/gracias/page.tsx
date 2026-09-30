@@ -14,7 +14,7 @@ type Props = {
 
 const COPY: Record<string, { title: string; body: string; tone: string }> = {
   confirmado: {
-    title: "¡Tu cupo está confirmado!",
+    title: "¡Tu reserva está confirmada!",
     body: "Gracias por sumarte. El equipo coordinador te contactará por WhatsApp con la logística: transporte, alojamiento y lo que debes llevar.",
     tone: "bg-brand-50 border-brand-200 text-brand-800",
   },

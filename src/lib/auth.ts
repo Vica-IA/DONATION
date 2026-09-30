@@ -25,9 +25,10 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!claims) return null;
   const user = await getUserWithHashById(claims.userId);
   if (!user || !user.active || !isUserRole(user.role)) return null;
-  // Un cambio de contraseña invalida las sesiones anteriores.
+  // Un cambio de contraseña invalida las sesiones anteriores. Se tolera un
+  // margen de 60 s por diferencias de reloj entre instancias del servidor.
   const changedAt = Math.floor(Date.parse(user.passwordChangedAt) / 1000);
-  if (Number.isFinite(changedAt) && claims.iat < changedAt) return null;
+  if (Number.isFinite(changedAt) && claims.iat + 60 < changedAt) return null;
   return {
     id: user.id,
     name: user.name,

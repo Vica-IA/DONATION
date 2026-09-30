@@ -110,7 +110,7 @@ async function main() {
 
   let url = await fill({ name: "Juan Prueba Uno", doc: "1000000001", attendance: "Sí, confirmo", phone: "3001000001" });
   assert.equal(url.searchParams.get("estado"), "confirmado");
-  assert.match((await page.textContent("h1")) ?? "", /Juan: ¡Tu cupo está confirmado!/);
+  assert.match((await page.textContent("h1")) ?? "", /Juan: ¡Tu reserva está confirmada!/);
   const registrationId = url.searchParams.get("r");
   assert.ok(registrationId, "la página de gracias recibe el id de inscripción");
   console.log("✓ inscripción confirmada");
