@@ -180,6 +180,8 @@ async function main() {
   assert.match(dash, /criterios Go listos/);
   assert.match(dash, /0\/16/);
   assert.match(dash, /Sin coordinador asignado/);
+  assert.match(dash, /Base de datos: local \(archivo\)/); // la prueba corre con ALLOW_LOCAL_DB=true
+  assert.match(dash, /NO conserva los datos/); // y el panel lo advierte en rojo
   console.log("✓ login y centro de misión (conteos, fases, criterios Go/No-Go)");
 
   // Mi cuenta: cambio voluntario de contraseña y reingreso con la nueva
@@ -391,6 +393,8 @@ async function main() {
   await page.goto(`${BASE}/admin/diagnostico`);
   const diag = await body(page);
   assert.match(diag, /Diagnóstico de datos/);
+  assert.match(diag, /Archivo local SQLite/);
+  assert.equal(await page.locator('[data-db-mode="local"]').count(), 1);
   assert.equal(await page.locator('[data-count="mission_registrations"] [data-count-value]').innerText(), "3");
   assert.equal(await page.locator('[data-count="volunteers"] [data-count-value]').innerText(), "3");
   assert.equal(await page.locator("[data-diag-name]").count(), 3);

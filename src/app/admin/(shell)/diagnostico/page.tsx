@@ -1,6 +1,7 @@
 import { PageBody, PageHeader } from "@/components/admin-shell";
 import { StatusBadge } from "@/components/ui";
 import { requirePermission } from "@/lib/auth";
+import { dbConnectionInfo } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { listAllRegistrations, listMissionsRaw, listVolunteersWithoutRegistration, registrationActivity, tableCounts } from "@/lib/diagnostics";
 import { relinkOrphansAction } from "./actions";
@@ -29,6 +30,7 @@ export default async function DiagnosticsPage({ searchParams }: { searchParams: 
     listVolunteersWithoutRegistration(),
     registrationActivity(),
   ]);
+  const conn = dbConnectionInfo();
   const orphans = registrations.filter((r) => !r.mission || !r.volunteer);
   const deletions = activity.filter((a) => a.action === "eliminada");
   const byMission = new Map<string, number>();
@@ -52,6 +54,24 @@ export default async function DiagnosticsPage({ searchParams }: { searchParams: 
             {Number(vinculadas) > 0 ? `${vinculadas} inscripciones vinculadas a la misión elegida.` : "No había inscripciones huérfanas que vincular (o faltó la confirmación)."}
           </div>
         ) : null}
+
+        <section className={`card ${conn.durable ? "" : "border-danger/40"}`} data-db-mode={conn.mode}>
+          <h2 className="section-title">Conexión a la base de datos</h2>
+          <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+            <dt className="text-muted">Modo</dt>
+            <dd className="font-semibold">
+              {conn.mode === "turso" ? "Turso (remota, durable)" : conn.mode === "ephemeral" ? "Temporal en /tmp (NO conserva datos)" : "Archivo local SQLite"}
+            </dd>
+            <dt className="text-muted">Variable usada</dt>
+            <dd className="mono text-xs">{conn.key ?? "ninguna con URL libsql:// (TURSO_DATABASE_URL ausente en este proceso)"}</dd>
+            <dt className="text-muted">Servidor</dt>
+            <dd className="mono text-xs">{conn.host ?? "—"}</dd>
+            <dt className="text-muted">Conserva los datos</dt>
+            <dd className={conn.durable ? "font-semibold text-brand-800" : "font-semibold text-danger"}>
+              {conn.durable ? "Sí: la base vive fuera de la aplicación." : "NO: cada instancia o despliegue arranca con una base vacía. Lo que se registre aquí se pierde."}
+            </dd>
+          </dl>
+        </section>
 
         <section>
           <h2 className="section-title">Conteo real por tabla</h2>
@@ -158,7 +178,7 @@ export default async function DiagnosticsPage({ searchParams }: { searchParams: 
                 </tr>
               ) : null}
               {registrations.map((r) => (
-                <tr key={r.registration.id} data-diag-name={r.volunteer?.fullName ?? ""} className={!r.mission || !r.volunteer ? "bg-red-50" : ""}>
+                <tr key={r.registration.id} data-diag-name={r.volunteer?.fullName ?? ""} className={!r.mission || !r.volunteer ? "bg-danger-soft" : ""}>
                   <td className="whitespace-nowrap text-xs">{formatDateTime(r.registration.createdAt)}</td>
                   <td>
                     <StatusBadge status={r.registration.status} />
@@ -208,7 +228,7 @@ export default async function DiagnosticsPage({ searchParams }: { searchParams: 
             </thead>
             <tbody>
               {activity.map((a) => (
-                <tr key={a.id} className={a.action === "eliminada" ? "bg-red-50" : ""}>
+                <tr key={a.id} className={a.action === "eliminada" ? "bg-danger-soft" : ""}>
                   <td className="whitespace-nowrap text-xs">{formatDateTime(a.createdAt)}</td>
                   <td className="text-xs">{a.entityType}</td>
                   <td className={a.action === "eliminada" ? "font-semibold text-danger" : ""}>{ACTION_LABELS[a.action] ?? a.action}</td>

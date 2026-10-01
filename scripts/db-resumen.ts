@@ -20,7 +20,13 @@ async function main() {
   const client = createClient({ url: target.url, authToken: target.authToken });
   const q = async (sql: string) => (await client.execute(sql)).rows;
   const tables = (await q(`SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`)).map((r) => String(r.name));
-  console.log(`${PREFIX} base ${target.label}; tablas: ${tables.join(", ")}`);
+  let host = "";
+  try {
+    host = target.label === "remota" ? new URL(target.url.replace(/^(libsql|wss?):/i, "https:")).host : "";
+  } catch {
+    host = "";
+  }
+  console.log(`${PREFIX} base ${target.label}${host ? ` (${host})` : ""}; tablas: ${tables.join(", ") || "(ninguna)"}`);
   const has = (t: string) => tables.includes(t);
 
   for (const t of ["missions", "volunteers", "mission_registrations", "terms_acceptances", "users", "activity_log", "_migrations"]) {

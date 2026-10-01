@@ -39,8 +39,29 @@ export type DbMode = "turso" | "ephemeral" | "local";
 /** Qué base se está usando: remota (Turso), temporal (/tmp en Vercel) o archivo local. */
 export function dbMode(): DbMode {
   if (remoteDbEnv()) return "turso";
-  if (Boolean(process.env.VERCEL) && process.env.ALLOW_EPHEMERAL_DB === "true") return "ephemeral";
+  if (process.env.ALLOW_EPHEMERAL_DB === "true") return "ephemeral";
   return "local";
+}
+
+/** true solo cuando la base conserva los datos entre instancias y despliegues (Turso). */
+export function isDurableDb(): boolean {
+  return dbMode() === "turso";
+}
+
+export type DbConnectionInfo = { mode: DbMode; key: string | null; host: string | null; durable: boolean };
+
+/** Qué base usa este proceso, sin secretos: modo, variable de entorno y host. */
+export function dbConnectionInfo(): DbConnectionInfo {
+  const remote = remoteDbEnv();
+  let host: string | null = null;
+  if (remote) {
+    try {
+      host = new URL(remote.url.replace(/^(libsql|wss?):/i, "https:")).host;
+    } catch {
+      host = null;
+    }
+  }
+  return { mode: dbMode(), key: remote?.key ?? null, host, durable: Boolean(remote) };
 }
 
 /**
@@ -66,11 +87,18 @@ function resolveUrl(): { url: string; authToken?: string } {
     console.warn("DONATION: base de datos temporal en /tmp (modo demostración). Conecta Turso para conservar los datos.");
     return { url: EPHEMERAL_URL };
   }
-  if (process.env.VERCEL) {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_LOCAL_DB !== "true") {
+    // En producción nunca se arranca con un archivo local: en Vercel cada instancia y cada
+    // despliegue tendrían su propia copia y los datos se perderían en silencio.
     throw new Error(
-      "DONATION: falta TURSO_DATABASE_URL (y TURSO_AUTH_TOKEN). En Vercel el sistema de archivos no persiste, " +
-        "así que la base local SQLite no sirve: crea una base en Turso y configura las variables de entorno.",
+      "DONATION: no hay base de datos remota configurada (TURSO_DATABASE_URL y TURSO_AUTH_TOKEN). " +
+        "La plataforma no arranca en producción con un archivo local porque los datos se perderían con cada instancia o despliegue. " +
+        "Conecta la base de Turso al proyecto en Vercel (Storage → Connect Project) y redespliega. " +
+        "Solo en un servidor propio con disco persistente puedes definir ALLOW_LOCAL_DB=true.",
     );
+  }
+  if (process.env.NODE_ENV === "production") {
+    console.warn("DONATION: base de datos en archivo local (ALLOW_LOCAL_DB=true). Solo válido en un servidor propio con disco persistente.");
   }
   return { url: LOCAL_URL };
 }

@@ -26,7 +26,10 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             Reintentar
           </button>
         </div>
-        {error.digest ? <p className="mt-3 text-xs text-faint">Referencia: {error.digest}</p> : null}
+        <p className="mt-3 text-xs text-faint">
+          Si el problema continúa, avisa al equipo: puede faltar la conexión de la base de datos (Turso) en el proyecto de Vercel.
+        </p>
+        {error.digest ? <p className="mt-1 text-xs text-faint">Referencia: {error.digest}</p> : null}
       </div>
     </main>
   );

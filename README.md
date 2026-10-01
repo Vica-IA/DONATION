@@ -46,7 +46,7 @@ Prueba de extremo a extremo (usa Chromium vía Playwright; `npm start` corre en 
 
 ```bash
 npm run build
-rm -f data/donation.db && AUTH_SECRET=secreto-de-prueba ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=clave-prueba PORT=3100 npm start &
+rm -f data/donation.db && ALLOW_LOCAL_DB=true AUTH_SECRET=secreto-de-prueba ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=clave-prueba PORT=3100 npm start &
 BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=clave-prueba npm run smoke
 ```
 
@@ -54,7 +54,7 @@ BASE_URL=http://localhost:3100 ADMIN_EMAIL=admin@prueba.local ADMIN_PASSWORD=cla
 
 - Proyecto Vercel: `donation` (equipo `info-42989304s-projects`). URL de producción: <https://donation-psi-tawny.vercel.app>. Formulario público: <https://donation-psi-tawny.vercel.app/misiones/choco-2026-01/confirmar>. Panel: <https://donation-psi-tawny.vercel.app/admin>. El dominio anterior <https://donaton-lilac.vercel.app> sigue apuntando al mismo proyecto.
 - Conectado al repositorio `Vica-IA/DONATION` con la integración de GitHub de Vercel: cada push a la rama `claude/stoic-mayer-8o32sp` (rama de producción del proyecto) despliega solo.
-- Base de datos: Turso, conectado como store del Marketplace de Vercel (Storage → Connect Project en Production, Preview y Development; crea `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`). La app detecta la URL `libsql://` bajo cualquier nombre de variable; si no encuentra ninguna y `ALLOW_EPHEMERAL_DB=true`, cae al modo demostración (base temporal, formulario cerrado, aviso en el panel). El administrador ve en la barra lateral qué base usa el despliegue ("Base de datos: Turso / temporal / local").
+- Base de datos: Turso, conectado como store del Marketplace de Vercel (Storage → Connect Project en Production, Preview y Development; crea `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`). La app detecta la URL `libsql://` bajo cualquier nombre de variable. **En producción no arranca sin base remota**: si las variables no llegan al proceso, falla con un error claro en vez de usar un archivo local (en Vercel cada instancia tendría su propia copia y los datos se perderían en silencio). Solo con `ALLOW_EPHEMERAL_DB=true` cae al modo demostración (base temporal, formulario cerrado) y solo con `ALLOW_LOCAL_DB=true` (servidor propio con disco) usa un archivo local. El administrador ve en la barra lateral qué base usa el despliegue y, en **Diagnóstico → Conexión a la base de datos**, el modo, la variable y el servidor; si la base no conserva datos, todo el panel muestra un aviso rojo.
 - Protección de despliegues: la autenticación de Vercel aplica solo a previews; la URL de producción es pública para que las personas voluntarias puedan usar el formulario.
 
 ## Desplegar en Vercel (producción)

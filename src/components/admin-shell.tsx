@@ -6,7 +6,7 @@ import { AREAS, USER_ROLES, areaInfo, labelOf, type Area } from "@/lib/catalogs"
 import { APP_NAME } from "@/lib/config";
 import type { Mission } from "@/lib/db/schema";
 import { formatDateRange, initials } from "@/lib/format";
-import { dbMode, isEphemeralDb } from "@/lib/db";
+import { dbMode, isDurableDb } from "@/lib/db";
 import { missionTimeline } from "@/lib/mission-timeline";
 import { can, canViewFinance } from "@/lib/permissions";
 import type { PublicUser } from "@/lib/users";
@@ -30,7 +30,7 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
   const scope =
     user.role === "coordinador" && user.area ? areaInfo(user.area).short : user.role === "lider_grupo" && user.organizationId ? "grupo" : null;
   const mode = dbMode();
-  const modeLabel = mode === "turso" ? "Base de datos: Turso" : mode === "ephemeral" ? "Base de datos: temporal" : "Base de datos: local";
+  const modeLabel = mode === "turso" ? "Base de datos: Turso" : mode === "ephemeral" ? "Base de datos: temporal (NO conserva datos)" : "Base de datos: local (archivo)";
 
   return (
     <div className="min-h-full lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -142,10 +142,11 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
       </aside>
 
       <main className="flex min-w-0 flex-col">
-        {isEphemeralDb() ? (
-          <div className="border-b border-amber-300 bg-warn-soft px-5 py-2 text-[13px] font-semibold text-warn lg:px-8" role="alert">
-            Modo demostración: la base de datos es temporal y se reinicia sola. Conecta Turso en Vercel (Storage) para conservar los datos y abrir las
-            inscripciones.
+        {!isDurableDb() ? (
+          <div className="border-b border-danger/40 bg-danger-soft px-5 py-2 text-[13px] font-semibold text-danger lg:px-8" role="alert">
+            Atención: la base de datos de este despliegue NO conserva los datos. Es un archivo temporal que se reinicia con cada instancia o
+            despliegue: las inscripciones y los usuarios se pierden. Conecta Turso en Vercel (Storage → Connect Project) y redespliega antes de
+            recibir inscripciones.
           </div>
         ) : null}
         {children}
