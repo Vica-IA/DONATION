@@ -387,6 +387,32 @@ async function main() {
   assert.match(await body(page), /Inscripción eliminada|eliminada/);
   console.log("✓ borrar inscripción: confirmación, lista, ficha 404 y bitácora");
 
+  // ---------- Diagnóstico de datos (solo administrador) ----------
+  await page.goto(`${BASE}/admin/diagnostico`);
+  const diag = await body(page);
+  assert.match(diag, /Diagnóstico de datos/);
+  assert.equal(await page.locator('[data-count="mission_registrations"] [data-count-value]').innerText(), "3");
+  assert.equal(await page.locator('[data-count="volunteers"] [data-count-value]').innerText(), "3");
+  assert.equal(await page.locator("[data-diag-name]").count(), 3);
+  assert.match(diag, /Juan Prueba Uno/);
+  assert.match(diag, /María Prueba Dos/);
+  assert.match(diag, /Pedro Prueba Tres/);
+  assert.doesNotMatch(diag, /inscripciones huérfanas/);
+  assert.doesNotMatch(diag, /personas sin inscripción/);
+  assert.match(diag, /Hay 1 eliminaciones registradas/);
+  assert.match(diag, /ELIMINADA/);
+  assert.match(diag, /Borrar Prueba Cuatro/);
+  const diagCsv = await page.request.get(`${BASE}/admin/diagnostico/export`);
+  assert.equal(diagCsv.status(), 200);
+  const diagText = await diagCsv.text();
+  assert.ok(diagText.charCodeAt(0) === 0xfeff, "CSV de diagnóstico con BOM");
+  const diagLines = diagText.slice(1).trim().split(/\r?\n/);
+  assert.equal(diagLines.length, 4, "CSV de diagnóstico: encabezado + 3 inscripciones");
+  assert.match(diagLines[0], /^Misión;Estado;Nombre completo;/);
+  assert.ok(diagLines.slice(1).every((l) => l.startsWith("CHO-2026-01;")));
+  assert.match(diagText, /Juan Prueba Uno/);
+  console.log("✓ diagnóstico de datos: conteos, todas las inscripciones, bitácora de borrados y CSV completo");
+
   // ---------- En la misión: programa, avisos y cuadrillas ----------
   await page.goto(`${base}/programa`);
   let prog = await body(page);
@@ -719,6 +745,10 @@ async function main() {
   assert.equal(await page.getByRole("button", { name: "Crear cuadrilla" }).count(), 0);
   const finDenied = await page.request.get(`${base}/finanzas/export`);
   assert.equal(finDenied.status(), 403);
+  await page.goto(`${BASE}/admin/diagnostico`);
+  await page.waitForURL(/\/admin\/m\/[^/?]+\?denegado=1$/);
+  const diagDenied = await page.request.get(`${BASE}/admin/diagnostico/export`);
+  assert.equal(diagDenied.status(), 403);
   await page.goto(`${base}/voluntarios`);
   b = await body(page);
   assert.doesNotMatch(b, /Descargar CSV/);

@@ -3,7 +3,7 @@ import type { RegistrationRow } from "./data";
 import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, GENERAL_AREA } from "./catalogs";
 import type { FinanceRow } from "./finance";
 
-function cell(value: unknown): string {
+export function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
   const s = String(value);
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -88,11 +88,11 @@ export function registrationsToCsv(rows: RegistrationRow[]): string {
       r.confirmedAt,
       r.createdAt,
     ]
-      .map(cell)
+      .map(csvCell)
       .join(";");
   });
   const BOM = String.fromCharCode(0xfeff);
-  return BOM + [headers.map(cell).join(";"), ...lines].join("\r\n");
+  return BOM + [headers.map(csvCell).join(";"), ...lines].join("\r\n");
 }
 
 /** Movimientos financieros de una misión (mismo formato: ; y BOM). */
@@ -115,9 +115,9 @@ export function financeEntriesToCsv(rows: FinanceRow[]): string {
       r.createdAt,
       r.updatedAt,
     ]
-      .map(cell)
+      .map(csvCell)
       .join(";"),
   );
   const BOM = String.fromCharCode(0xfeff);
-  return BOM + [headers.map(cell).join(";"), ...lines].join("\r\n");
+  return BOM + [headers.map(csvCell).join(";"), ...lines].join("\r\n");
 }

@@ -37,6 +37,7 @@
 | 2026-09-29 | El formulario público muestra la portada de Kairós Life (Misión Reconocimiento, etapa 2) y el logo de Grupo Kairós; los cupos confirmados dejan de verse en público y quedan solo en el panel. |
 | 2026-09-30 | Al crear un usuario (líder o coordinador) el panel genera un enlace de invitación de 7 días para que la persona cree su contraseña; la lista marca "Invitación pendiente". |
 | 2026-09-29 | La misión tiene salida y llegada (día y hora) editables desde el panel y visibles en el formulario; se retira la descripción provisional de la primera misión. |
+| 2026-10-01 | Diagnóstico de datos para el administrador: conteos reales por tabla, todas las inscripciones sin filtros (huérfanas marcadas y vinculables), bitácora con eliminaciones resaltadas y CSV completo. |
 | 2026-09-30 | Página pública de la misión (`/misiones/choco-2026-01`) para todos los voluntarios: ahora y siguiente, avisos, programa por día, cuadrillas, logística y contactos de coordinación. En el panel, administrador, líderes y coordinadores publican avisos, arman el programa y organizan cuadrillas con las personas confirmadas. |
 
 ## Puntos por resolver entre documentos

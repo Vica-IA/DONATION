@@ -115,6 +115,7 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
           <div className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
             <NavLink href="/admin/misiones" label="Misiones" />
             {can(user.role, "users.manage") ? <NavLink href="/admin/usuarios" label="Usuarios" /> : null}
+            {can(user.role, "users.manage") ? <NavLink href="/admin/diagnostico" label="Diagnóstico" /> : null}
             <NavLink href="/" label="Sitio público" match="exact" />
           </div>
           {user.role === "admin" ? (
