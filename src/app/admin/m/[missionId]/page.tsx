@@ -42,6 +42,7 @@ const ACTION_LABELS: Record<string, string> = {
   condiciones_aceptadas: "condiciones aceptadas",
   estado: "cambio de estado",
   eliminada: "eliminada",
+  importada: "importada desde CSV",
   registrado: "registrado",
   eliminado: "eliminado",
   actividad_creada: "actividad agregada",

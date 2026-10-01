@@ -5,6 +5,7 @@ import { dbConnectionInfo } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { listAllRegistrations, listMissionsRaw, listVolunteersWithoutRegistration, registrationActivity, tableCounts } from "@/lib/diagnostics";
 import { relinkOrphansAction } from "./actions";
+import { ImportForm } from "./import-form";
 
 export const metadata = { title: "Diagnóstico de datos" };
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ const ACTION_LABELS: Record<string, string> = {
   condiciones_aceptadas: "condiciones aceptadas",
   estado: "cambio de estado",
   eliminada: "ELIMINADA",
+  importada: "importada desde CSV",
   inscripciones_revinculadas: "inscripciones vinculadas",
 };
 
@@ -150,6 +152,8 @@ export default async function DiagnosticsPage({ searchParams }: { searchParams: 
             ) : null}
           </section>
         ) : null}
+
+        <ImportForm missions={missions.map((m) => ({ id: m.id, code: m.code, name: m.name, registrationOpen: m.registrationOpen }))} />
 
         <section className="card-tight overflow-x-auto p-0">
           <div className="px-4 pt-4">

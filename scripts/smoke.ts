@@ -417,6 +417,28 @@ async function main() {
   assert.match(diagText, /Juan Prueba Uno/);
   console.log("✓ diagnóstico de datos: conteos, todas las inscripciones, bitácora de borrados y CSV completo");
 
+  // Importar inscripciones desde CSV (formato del panel): una nueva y una existente (se actualiza, no se duplica)
+  const importCsv = "\ufeffEstado;Nombre completo;Tipo doc.;Documento;Fecha nacimiento;Teléfono;Correo;Ciudad;Grupo;Refugio;EPS;RH;Contacto emergencia;Parentesco;Tel. emergencia;Tel. emergencia 2;Póliza accidentes;Condiciones médicas;Alimentación;Habilidades;Exp. construcción;Respuesta;Rol preferido;Rol asignado;Comentarios;Notas internas;Aporte;Aporte valor;Aporte notas;Condiciones aceptadas el;Autoriza imagen;Confirmado el;Registrado el\r\n" + "Confirmado;Importada Prueba Cinco;Cédula de ciudadanía;1000000005;1995-05-05;3005000005;;Rionegro;Grupo Kairós;Refugio Importado;Sura;O+;Contacto Cinco;Mamá;3005000006;;;;;Cocina, Música;Sí;confirmo;Donde más se necesite;;Importada en la prueba;;Pendiente;;;2026-09-30T20:00:00.000Z;Sí;2026-09-30T19:59:00.000Z;2026-09-30T19:58:00.000Z\r\n" + "Confirmado;Juan Prueba Uno;Cédula de ciudadanía;1000000001;;3001000009;;Ciudad Importada;Grupo Kairós;Refugio San José;Sura;O+;Ana Pérez;;3001000010;;;;;Conducción;No;confirmo;Logística y transporte;;;;Pendiente;;;;;;\r\n";
+  await page.goto(`${BASE}/admin/diagnostico`);
+  await page.setInputFiles("#archivo", { name: "import.csv", mimeType: "text/csv", buffer: Buffer.from(importCsv, "utf8") });
+  await page.getByLabel(/Entiendo que las personas del archivo/).check();
+  await page.getByRole("button", { name: "Importar inscripciones" }).click();
+  await page.locator("[data-import-result]").waitFor();
+  const importResult = await page.locator("[data-import-result]").innerText();
+  assert.match(importResult, /Filas leídas: 2 · creadas: 1 · actualizadas: 1 · condiciones registradas: 1 · errores: 0/);
+  await page.goto(`${BASE}/admin/diagnostico`);
+  assert.equal(await page.locator('[data-count="mission_registrations"] [data-count-value]').innerText(), "4");
+  assert.equal(await page.locator('[data-count="volunteers"] [data-count-value]').innerText(), "4");
+  const diag2 = await body(page);
+  assert.match(diag2, /Importada Prueba Cinco/);
+  assert.match(diag2, /importada desde CSV/);
+  await page.goto(`${base}/voluntarios`);
+  const vols = await body(page);
+  assert.match(vols, /Importada Prueba Cinco/);
+  await page.goto(`${base}/voluntarios/${registrationId}`);
+  assert.match(await body(page), /Ciudad Importada/); // Juan se actualizó, no se duplicó
+  console.log("✓ importación de inscripciones desde CSV: crea, actualiza sin duplicar y registra condiciones");
+
   // ---------- En la misión: programa, avisos y cuadrillas ----------
   await page.goto(`${base}/programa`);
   let prog = await body(page);
