@@ -83,7 +83,10 @@ export const adminRegistrationSchema = z.object({
   adminNotes: optionalText(2000),
   paymentStatus: z.enum(values(PAYMENT_STATUS)),
   paymentAmount: z
-    .union([z.coerce.number().int().min(0).max(100_000_000), z.literal("")])
+    .preprocess(
+      (v) => (typeof v === "string" ? v.replace(/[\s$.,]/g, "") : v),
+      z.union([z.coerce.number({ message: "Escribe el valor en pesos" }).int("Sin decimales").min(0, "El valor no puede ser negativo").max(100_000_000, "Valor demasiado alto"), z.literal("")]),
+    )
     .optional()
     .transform((v) => (v === undefined || v === "" ? null : v)),
   paymentNotes: optionalText(300),

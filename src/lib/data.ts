@@ -442,6 +442,7 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
   if (current.registration.status !== input.status) changes.push(`estado ${current.registration.status} → ${input.status}`);
   if ((current.registration.assignedRole ?? null) !== input.assignedRole) changes.push(`rol asignado: ${input.assignedRole ?? "—"}`);
   if (current.registration.paymentStatus !== input.paymentStatus) changes.push(`aporte ${current.registration.paymentStatus} → ${input.paymentStatus}`);
+  if ((current.registration.paymentAmount ?? null) !== input.paymentAmount) changes.push(`valor del aporte ${current.registration.paymentAmount ?? "—"} → ${input.paymentAmount ?? "—"}`);
   await log("registration", id, "actualizada_por_admin", changes.join("; ") || "datos editados", actor);
 }
 

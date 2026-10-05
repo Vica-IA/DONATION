@@ -54,8 +54,8 @@ export function ParticipantForm({ registration, volunteer, organizations }: Prop
             ))}
           </select>
         </Field>
-        <Field label="Valor recibido (COP)" htmlFor="paymentAmount" error={errors.paymentAmount}>
-          <input id="paymentAmount" name="paymentAmount" type="number" min={0} step={1000} className={cls("paymentAmount")} defaultValue={registration.paymentAmount ?? ""} />
+        <Field label="Valor recibido (COP)" htmlFor="paymentAmount" error={errors.paymentAmount} help="Sin decimales. Puedes escribir 400.000 o 400000.">
+          <input id="paymentAmount" name="paymentAmount" inputMode="numeric" placeholder="400.000" className={cls("paymentAmount")} defaultValue={registration.paymentAmount ?? ""} />
         </Field>
         <Field label="Referencia / nota" htmlFor="paymentNotes" error={errors.paymentNotes}>
           <input id="paymentNotes" name="paymentNotes" className={cls("paymentNotes")} defaultValue={registration.paymentNotes ?? ""} placeholder="Transferencia 29/09" />

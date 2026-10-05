@@ -41,6 +41,7 @@
 | 2026-10-01 | Incidente de persistencia: en Vercel las variables de Turso no llegaban al proceso y la app usaba un archivo SQLite local, distinto por instancia y despliegue, así que las inscripciones se perdían. Desde ahora producción no arranca sin base remota, el panel muestra un aviso rojo si la base no es durable y Diagnóstico enseña la conexión real (modo, variable, servidor). |
 | 2026-10-01 | Diagnóstico de datos para el administrador: conteos reales por tabla, todas las inscripciones sin filtros (huérfanas marcadas y vinculables), bitácora con eliminaciones resaltadas y CSV completo. |
 | 2026-09-30 | Página pública de la misión (`/misiones/choco-2026-01`) para todos los voluntarios: ahora y siguiente, avisos, programa por día, cuadrillas, logística y contactos de coordinación. En el panel, administrador, líderes y coordinadores publican avisos, arman el programa y organizan cuadrillas con las personas confirmadas. |
+| 2026-10-05 | Ficha de voluntario: el valor recibido del aporte acepta puntos de miles (400.000) y deja de perderse; la bitácora registra el cambio de valor. |
 
 ## Puntos por resolver entre documentos
 

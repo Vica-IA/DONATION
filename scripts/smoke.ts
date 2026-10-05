@@ -289,7 +289,7 @@ async function main() {
   await page.selectOption("#assignedRole", "logistica");
   await page.fill("#adminNotes", "Nota interna de prueba");
   await page.selectOption("#paymentStatus", "pagado");
-  await page.fill("#paymentAmount", "400000");
+  await page.fill("#paymentAmount", "400.000");
   await page.fill("#paymentNotes", "Transferencia de prueba");
   await page.getByRole("button", { name: "Guardar" }).click();
   await page.getByText("Cambios guardados.").waitFor();
@@ -297,6 +297,9 @@ async function main() {
   let detail = await body(page);
   assert.match(detail, /estado pendiente → confirmado/);
   assert.match(detail, /aporte pendiente → pagado/);
+  assert.match(detail, /valor del aporte — → 400000/);
+  assert.match(detail, /Pagado · \$\s?400\.000 · Transferencia de prueba/);
+  assert.equal(await page.inputValue("#paymentAmount"), "400000");
   assert.match(detail, /Aceptadas el .* \(versión 1\)/);
   console.log("✓ gestión de participante (estado, rol, notas, aporte, historial)");
 
