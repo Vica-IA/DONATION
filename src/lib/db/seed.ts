@@ -1,6 +1,6 @@
 import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { activityLog, appSettings, missions, organizations, tasks, users } from "./schema";
+import { activityLog, appSettings, financeEntries, missions, organizations, tasks, users } from "./schema";
 import { nowIso } from "../format";
 import { DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, hashPassword } from "../password";
 import { KAIROS_ETAPA2_DECLARATIONS, KAIROS_ETAPA2_TERMS_MARKDOWN, KAIROS_ETAPA2_TERMS_VERSION } from "../terms/kairos-etapa2";
@@ -232,4 +232,67 @@ export async function seedTasksIfEmpty(db: Db) {
       createdBy: "sistema",
     })),
   );
+}
+
+const FINANCE_PLAN_SETTING = "finance_plan_seeded";
+
+/** Plan financiero inicial de la misión semilla (lista de Financiero, octubre de 2026). Todo proyectado: es el presupuesto. */
+const SEED_FINANCE_PLAN: { kind: "gasto" | "ingreso"; category: string; area?: string; concept: string; amount: number; counterparty?: string }[] = [
+  { kind: "ingreso", category: "donaciones", concept: "Donación Grupo Kairós", amount: 10_000_000, counterparty: "Grupo Kairós" },
+  { kind: "ingreso", category: "donaciones", concept: "Donación Fundación Pálpitos (aprox.)", amount: 2_000_000, counterparty: "Fundación Pálpitos" },
+  { kind: "gasto", category: "transporte", area: "transporte", concept: "Bus Medellín – Chocó (ida y regreso)", amount: 6_500_000 },
+  { kind: "gasto", category: "transporte", area: "transporte", concept: "4 buses a Puerto Meluk (ida y vuelta)", amount: 4_000_000 },
+  { kind: "gasto", category: "transporte", area: "transporte", concept: "Gasolina de las lanchas", amount: 3_230_000 },
+  { kind: "gasto", category: "transporte", area: "transporte", concept: "Motoristas", amount: 1_200_000 },
+  { kind: "gasto", category: "alimentacion", area: "alimentacion", concept: "Alimentación y abastecimientos", amount: 3_000_000 },
+  { kind: "gasto", category: "materiales", concept: "Materiales (presupuesto asignado)", amount: 6_000_000 },
+  { kind: "gasto", category: "actividades", concept: "Tienda y actividades (presupuesto asignado)", amount: 230_000 },
+];
+
+/**
+ * Carga el plan financiero inicial de la misión semilla una sola vez: solo si
+ * la misión todavía no tiene presupuesto (ningún gasto proyectado) y no se ha
+ * intentado antes (marca en app_settings). Después se edita desde Finanzas;
+ * aunque se borre, no se vuelve a cargar.
+ */
+export async function seedFinancePlanIfEmpty(db: Db) {
+  const mission = (await db.select().from(missions).where(eq(missions.code, SEED_MISSION_CODE)).limit(1))[0];
+  if (!mission) return;
+  const key = `${FINANCE_PLAN_SETTING}:${mission.id}`;
+  const done = (await db.select().from(appSettings).where(eq(appSettings.key, key)).limit(1))[0];
+  if (done) return;
+  const now = nowIso();
+  const [{ value: budgeted }] = await db
+    .select({ value: count() })
+    .from(financeEntries)
+    .where(and(eq(financeEntries.missionId, mission.id), eq(financeEntries.kind, "gasto"), eq(financeEntries.status, "proyectado")));
+  if (budgeted === 0) {
+    await db.insert(financeEntries).values(
+      SEED_FINANCE_PLAN.map((e) => ({
+        id: crypto.randomUUID(),
+        missionId: mission.id,
+        kind: e.kind,
+        status: "proyectado",
+        category: e.category,
+        area: e.area ?? null,
+        concept: e.concept,
+        amount: e.amount,
+        counterparty: e.counterparty ?? null,
+        notes: "Plan inicial de la misión (lista de Financiero, octubre de 2026).",
+        createdBy: "sistema",
+      })),
+    );
+    await db.insert(activityLog).values({
+      id: crypto.randomUUID(),
+      entityType: "finance",
+      entityId: mission.id,
+      action: "plan_inicial_cargado",
+      detail: `${SEED_FINANCE_PLAN.length} movimientos proyectados del plan inicial de Financiero`,
+      actor: "sistema",
+    });
+  }
+  await db
+    .insert(appSettings)
+    .values({ key, value: now, updatedAt: now })
+    .onConflictDoUpdate({ target: appSettings.key, set: { value: now, updatedAt: now } });
 }

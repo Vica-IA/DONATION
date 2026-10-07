@@ -231,6 +231,17 @@ async function main() {
   assert.doesNotMatch(await body(page), /Tarea de prueba admin/);
   console.log("✓ tablero: crear, avanzar, editar y eliminar tarea");
 
+  // Finanzas: el plan inicial de Financiero se carga solo (fijos 17.930.000, asignado 6.230.000)
+  await page.goto(`${base}/finanzas`);
+  let fin = await body(page);
+  assert.match(fin, /Plan de la misión/);
+  assert.match(fin, /Gastos fijos\s*\$\s?17\.930\.000/i);
+  assert.match(fin, /Asignado: Materiales de construcción\s*\$\s?6\.000\.000/i);
+  assert.match(fin, /Asignado: Actividades con la comunidad\s*\$\s?230\.000/i);
+  assert.match(fin, /Bus Medellín – Chocó \(ida y regreso\)/);
+  assert.match(fin, /Donación Grupo Kairós/);
+  assert.match(fin, /Presupuesto de gastos\s*\$\s?24\.160\.000/i);
+
   // Finanzas: presupuesto, ingreso, edición, eliminación y CSV
   await page.goto(`${base}/finanzas?nuevo=1`);
   await page.locator('input[name="kind"][value="gasto"]').check();
@@ -242,9 +253,9 @@ async function main() {
   await page.selectOption("#area", "transporte");
   await page.getByRole("button", { name: "Registrar movimiento" }).click();
   await page.locator('[data-concept="Bus Medellín – Tadó (ida y regreso)"]').waitFor();
-  let fin = await body(page);
+  fin = await body(page);
   assert.match(fin, /Movimiento registrado\./);
-  assert.match(fin, /Presupuesto de gastos\s*\$\s?3\.000\.000/i);
+  assert.match(fin, /Presupuesto de gastos\s*\$\s?27\.160\.000/i);
   assert.match(fin, /Transporte y fletes/);
   await page.locator('input[name="kind"][value="ingreso"]').check();
   await page.selectOption("#category", "donaciones");
@@ -263,9 +274,9 @@ async function main() {
   await page.getByText("Cambios guardados.").waitFor();
   await page.goto(`${base}/finanzas`);
   fin = await body(page);
-  assert.match(fin, /Presupuesto de gastos\s*\$\s?3\.500\.000/i);
+  assert.match(fin, /Presupuesto de gastos\s*\$\s?27\.660\.000/i);
   await page.goto(`${base}/finanzas?tipo=ingreso`);
-  assert.match(await body(page), /1 de 2/);
+  assert.match(await body(page), /3 de 11/);
   assert.match((await page.getByRole("link", { name: "Descargar CSV" }).first().getAttribute("href")) ?? "", /\/finanzas\/export\?tipo=ingreso$/);
   const finCsvFiltrado = await page.request.get(`${base}/finanzas/export?tipo=ingreso`);
   assert.equal(finCsvFiltrado.status(), 200);
@@ -285,7 +296,10 @@ async function main() {
 
   // Donaciones: dinero y en especie, resumen, validación, CSV y efecto en Finanzas
   await page.goto(`${base}/finanzas/donaciones`);
-  assert.match(await body(page), /Todavía no hay donaciones/);
+  let don = await body(page);
+  assert.match(don, /2 donaciones · 2 donantes/); // las del plan inicial (proyectadas)
+  assert.match(don, /Estimadas en el plan\s*\$\s?12\.000\.000/i);
+  assert.match(don, /Grupo Kairós/);
   await page.locator('input[name="donationType"][value="dinero"]').check();
   await page.fill("#donor", "Familia Restrepo");
   await page.fill("#amount", "500.000");
@@ -294,7 +308,7 @@ async function main() {
   await page.fill("#reference", "Transferencia Bancolombia");
   await page.getByRole("button", { name: "Registrar donación" }).click();
   await page.locator('[data-donor="Familia Restrepo"]').waitFor();
-  let don = await body(page);
+  don = await body(page);
   assert.match(don, /Donación registrada: Familia Restrepo/);
   assert.match(don, /Dinero recibido\s*\$\s?500\.000/i);
   await page.locator('input[name="donationType"][value="especie"]').check();
@@ -307,7 +321,7 @@ async function main() {
   await page.locator('[data-donor="Ferretería El Tornillo"]').waitFor();
   don = await body(page);
   assert.match(don, /En especie \(valor estimado\)\s*\$\s?800\.000/i);
-  assert.match(don, /2 donaciones · 2 donantes/);
+  assert.match(don, /4 donaciones · 4 donantes/);
   assert.match(don, /20 bultos de cemento/);
   const donCsv = await (await page.request.get(`${base}/finanzas/export?categoria=donaciones,donaciones_especie`)).text();
   assert.match(donCsv, /Familia Restrepo/);

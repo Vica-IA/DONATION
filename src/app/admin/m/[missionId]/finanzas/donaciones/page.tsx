@@ -45,10 +45,11 @@ export default async function DonationsPage({ params }: { params: Promise<{ miss
         }
       />
       <PageBody>
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Kpi label="Dinero recibido" value={formatCOP(summary.received)} sub="Cuenta como ingreso recibido en Finanzas" tone="brand" />
           <Kpi label="En especie (valor estimado)" value={formatCOP(summary.inKind)} sub="Lo que la misión no tendrá que comprar" />
           <Kpi label="Prometidas, sin recibir" value={formatCOP(summary.promised)} sub="Acordadas y pendientes de llegar" />
+          <Kpi label="Estimadas en el plan" value={formatCOP(summary.projected)} sub="Proyectadas, sin acuerdo en firme" />
           <Kpi label="Donantes" value={String(summary.donors)} sub="Personas, familias o entidades distintas" />
         </section>
 

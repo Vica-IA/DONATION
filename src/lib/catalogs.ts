@@ -153,9 +153,9 @@ export const FINANCE_STATUS_HELP: Record<FinanceStatus, string> = {
  * solos a partir del estado del aporte en cada ficha.
  */
 export const FINANCE_CATEGORIES = [
-  { value: "transporte", label: "Transporte y fletes", kind: "gasto" },
-  { value: "alimentacion", label: "Alimentación y agua", kind: "gasto" },
-  { value: "alojamiento", label: "Alojamiento", kind: "gasto" },
+  { value: "transporte", label: "Transporte y fletes", kind: "gasto", fijo: true },
+  { value: "alimentacion", label: "Alimentación y agua", kind: "gasto", fijo: true },
+  { value: "alojamiento", label: "Alojamiento", kind: "gasto", fijo: true },
   { value: "materiales", label: "Materiales de construcción", kind: "gasto" },
   { value: "herramientas", label: "Herramientas y equipos", kind: "gasto" },
   { value: "salud", label: "Salud, seguros y botiquín", kind: "gasto" },
@@ -170,7 +170,7 @@ export const FINANCE_CATEGORIES = [
   { value: "recaudacion", label: "Eventos de recaudación", kind: "ingreso" },
   { value: "aportes_extra", label: "Aportes adicionales de voluntarios", kind: "ingreso" },
   { value: "otros_ingresos", label: "Otros ingresos", kind: "ingreso" },
-] as const satisfies readonly (Option & { kind: FinanceKind })[];
+] as const satisfies readonly (Option & { kind: FinanceKind; fijo?: boolean })[];
 
 export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number]["value"];
 
@@ -180,6 +180,12 @@ export function financeCategoriesFor(kind: FinanceKind) {
 
 export function financeCategoryKind(category: string): FinanceKind | null {
   return FINANCE_CATEGORIES.find((c) => c.value === category)?.kind ?? null;
+}
+
+/** Gasto fijo de la logística (transporte, alimentación, alojamiento): se cubre primero; el saldo del ingreso se asigna a materiales y actividades. */
+export function isFixedExpenseCategory(category: string): boolean {
+  const c = FINANCE_CATEGORIES.find((x) => x.value === category) as { fijo?: boolean } | undefined;
+  return c?.fijo === true;
 }
 
 /** Tipo de donación que recibe la misión. En especie se registra con su valor estimado. */

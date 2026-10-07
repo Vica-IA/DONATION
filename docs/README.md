@@ -44,6 +44,7 @@
 | 2026-10-05 | Ficha de voluntario: el valor recibido del aporte acepta puntos de miles (400.000) y deja de perderse; la bitácora registra el cambio de valor. |
 | 2026-10-07 | Descargar CSV en Voluntarios y Finanzas respeta los filtros aplicados en la vista (el archivo se llama …-filtrado-…). |
 | 2026-10-07 | Finanzas → Donaciones: registro de donaciones recibidas o prometidas, en dinero o en especie (valor estimado), con resumen, lista y CSV; entran como ingresos de la misión. |
+| 2026-10-07 | Finanzas muestra el "Plan de la misión" como lo lleva Financiero (ingresos estimados − gastos fijos = saldo para materiales y actividades) y carga una sola vez el plan inicial de la misión Chocó (donaciones estimadas, transporte, alimentación, materiales, tienda y actividades). |
 
 ## Puntos por resolver entre documentos
 

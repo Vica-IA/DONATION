@@ -1,6 +1,6 @@
 import "server-only";
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
-import { FINANCE_CATEGORIES, labelOf, type FinanceKind } from "./catalogs";
+import { FINANCE_CATEGORIES, isFixedExpenseCategory, labelOf, type FinanceKind } from "./catalogs";
 import { log } from "./data";
 import { getDb } from "./db";
 import { financeEntries, missionRegistrations, users, type FinanceEntry, type Mission } from "./db/schema";
@@ -279,12 +279,14 @@ export type DonationSummary = {
   inKind: number;
   /** Prometido (dinero o especie) que todavía no llega. */
   promised: number;
+  /** Estimado en el plan (proyectado), sin acuerdo en firme todavía. */
+  projected: number;
   donors: number;
   count: number;
 };
 
 export function summarizeDonations(rows: FinanceRow[]): DonationSummary {
-  const out: DonationSummary = { received: 0, inKind: 0, promised: 0, donors: 0, count: rows.length };
+  const out: DonationSummary = { received: 0, inKind: 0, promised: 0, projected: 0, donors: 0, count: rows.length };
   const donors = new Set<string>();
   for (const r of rows) {
     if (r.counterparty?.trim()) donors.add(r.counterparty.trim().toLowerCase());
@@ -292,7 +294,56 @@ export function summarizeDonations(rows: FinanceRow[]): DonationSummary {
       if (r.category === "donaciones_especie") out.inKind += r.amount;
       else out.received += r.amount;
     } else if (r.status === "comprometido") out.promised += r.amount;
+    else out.projected += r.amount;
   }
   out.donors = donors.size;
   return out;
+}
+
+// ---------- Plan de la misión ----------
+
+/**
+ * Lectura del presupuesto como la hace Financiero: ingresos estimados − gastos
+ * fijos (transporte, alimentación, alojamiento) = saldo para materiales y
+ * actividades, que se reparte en presupuestos asignados.
+ */
+export type FinancePlan = {
+  /** Ingresos proyectados, incluidos los aportes de voluntarios calculados. */
+  ingresosEstimados: number;
+  aportesEstimados: number;
+  /** Presupuesto (proyectado) de las categorías fijas. */
+  gastosFijos: number;
+  gastosFijosEjecutados: number;
+  /** Ingresos estimados − gastos fijos. */
+  saldoDisponible: number;
+  /** Presupuesto (proyectado) del resto de categorías: materiales, actividades, otros. */
+  presupuestoAsignado: number;
+  asignadoEjecutado: number;
+  /** Saldo disponible − presupuesto asignado (negativo = sobreasignado). */
+  sinAsignar: number;
+  fijas: CategoryLine[];
+  asignables: CategoryLine[];
+};
+
+export function planFromSummary(summary: FinanceSummary): FinancePlan {
+  const gastos = summary.porCategoria.filter((l) => l.kind === "gasto");
+  const fijas = gastos.filter((l) => isFixedExpenseCategory(l.category));
+  const asignables = gastos.filter((l) => !isFixedExpenseCategory(l.category));
+  const sum = (lines: CategoryLine[], key: "proyectado" | "comprometido" | "ejecutado") => lines.reduce((acc, l) => acc + l[key], 0);
+  const gastosFijos = sum(fijas, "proyectado");
+  const presupuestoAsignado = sum(asignables, "proyectado");
+  const ingresosEstimados = summary.ingresos.proyectado;
+  const saldoDisponible = ingresosEstimados - gastosFijos;
+  return {
+    ingresosEstimados,
+    aportesEstimados: summary.aportes.projected,
+    gastosFijos,
+    gastosFijosEjecutados: sum(fijas, "comprometido") + sum(fijas, "ejecutado"),
+    saldoDisponible,
+    presupuestoAsignado,
+    asignadoEjecutado: sum(asignables, "comprometido") + sum(asignables, "ejecutado"),
+    sinAsignar: saldoDisponible - presupuestoAsignado,
+    fijas,
+    asignables,
+  };
 }

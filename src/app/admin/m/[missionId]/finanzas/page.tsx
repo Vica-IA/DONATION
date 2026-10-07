@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/admin-shell";
 import { requireUser } from "@/lib/auth";
-import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, GENERAL_AREA, areaInfo, labelOf } from "@/lib/catalogs";
+import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, GENERAL_AREA, areaInfo, isFixedExpenseCategory, labelOf } from "@/lib/catalogs";
 import { getMissionById } from "@/lib/data";
-import { contributionSummary, filterEntries, financeFiltersFromParams, listEntries, summarizeFinance, sumAmounts, type CategoryLine } from "@/lib/finance";
+import { contributionSummary, filterEntries, financeFiltersFromParams, listEntries, planFromSummary, summarizeFinance, sumAmounts, type CategoryLine } from "@/lib/finance";
 import { formatCOP, formatShortDate, percent, toQuery } from "@/lib/format";
 import { canManageFinance, canViewFinance } from "@/lib/permissions";
 import { listAssignableUsers } from "@/lib/users";
@@ -30,6 +30,7 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
   const [all, aportes, people] = await Promise.all([listEntries(mission.id), contributionSummary(mission), manage ? listAssignableUsers() : Promise.resolve([])]);
   const summary = summarizeFinance(all, aportes);
+  const plan = planFromSummary(summary);
   const filters = financeFiltersFromParams({ q, tipo, estado, categoria, area });
   const filtering = Object.values(filters).some(Boolean);
   // La descarga CSV conserva los filtros de la vista.
@@ -107,6 +108,41 @@ export default async function FinancePage({ params, searchParams }: Props) {
             <span className="font-semibold">Falta por recaudar {formatCOP(summary.faltante)}</span> para cubrir el presupuesto de gastos con lo recibido y lo comprometido.
           </div>
         ) : null}
+
+        {/* Plan de la misión: ingresos estimados − gastos fijos = saldo para materiales y actividades */}
+        <section className="card-tight sm:p-5" data-plan>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="section-title">Plan de la misión</span>
+            <span className="text-xs text-muted">Ingresos estimados − gastos fijos = saldo para materiales y actividades</span>
+          </div>
+          <div className="mt-3 grid gap-4 lg:grid-cols-3">
+            <PlanBlock
+              title="Ingresos estimados"
+              total={plan.ingresosEstimados}
+              tone="brand"
+              lines={[
+                { label: "Aportes de voluntarios", value: plan.aportesEstimados, note: `Calculado: ${aportes.confirmed - aportes.exempt} confirmados × ${formatCOP(aportes.perPerson)}` },
+                ...ingresos.filter((l) => !l.automatic).map((l) => ({ label: l.label, value: l.proyectado })),
+              ]}
+              footer={{ label: "Recibido hasta hoy", value: summary.ingresos.ejecutado }}
+            />
+            <PlanBlock
+              title="Gastos fijos"
+              total={plan.gastosFijos}
+              lines={plan.fijas.map((l) => ({ label: l.label, value: l.proyectado }))}
+              empty="Sin presupuesto de transporte, alimentación ni alojamiento."
+              footer={{ label: "Comprometido y ejecutado", value: plan.gastosFijosEjecutados }}
+            />
+            <PlanBlock
+              title="Saldo para materiales y actividades"
+              total={plan.saldoDisponible}
+              tone={plan.saldoDisponible < 0 ? "danger" : "default"}
+              lines={plan.asignables.map((l) => ({ label: `Asignado: ${l.label}`, value: l.proyectado }))}
+              empty="Sin presupuesto asignado todavía."
+              footer={plan.sinAsignar >= 0 ? { label: "Sin asignar", value: plan.sinAsignar } : { label: "Sobreasignado", value: -plan.sinAsignar, danger: true }}
+            />
+          </div>
+        </section>
 
         {/* Presupuesto vs ejecución */}
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
@@ -334,6 +370,7 @@ function CategoryRow({ line, base }: { line: CategoryLine; base: string }) {
         <Link href={`${base}/finanzas?categoria=${line.category}`} className="font-semibold hover:text-brand-700">
           {line.label}
         </Link>
+        {isFixedExpenseCategory(line.category) ? <span className="badge ml-2 bg-brand-100 text-brand-800">fijo</span> : null}
         <span className="block text-xs text-muted">{line.count} movimientos</span>
       </td>
       <td className="text-right">
@@ -360,3 +397,44 @@ function CategoryRow({ line, base }: { line: CategoryLine; base: string }) {
   );
 }
 
+function PlanBlock({
+  title,
+  total,
+  tone = "default",
+  lines,
+  footer,
+  empty,
+}: {
+  title: string;
+  total: number;
+  tone?: "default" | "brand" | "danger";
+  lines: { label: string; value: number; note?: string }[];
+  footer?: { label: string; value: number; danger?: boolean };
+  empty?: string;
+}) {
+  const text = tone === "brand" ? "text-brand-800" : tone === "danger" ? "text-danger" : "text-ink";
+  return (
+    <div className="rounded-2xl border border-line bg-white p-4">
+      <p className="kpi-label">{title}</p>
+      <p className={`mono mt-1 text-2xl font-extrabold tracking-tight ${text}`}>{formatCOP(total)}</p>
+      <ul className="mt-3 space-y-1 text-sm">
+        {lines.length === 0 && empty ? <li className="text-muted">{empty}</li> : null}
+        {lines.map((l) => (
+          <li key={l.label} className="flex items-baseline justify-between gap-3">
+            <span>
+              {l.label}
+              {l.note ? <span className="block text-xs text-muted">{l.note}</span> : null}
+            </span>
+            <span className="mono whitespace-nowrap">{formatCOP(l.value)}</span>
+          </li>
+        ))}
+      </ul>
+      {footer ? (
+        <p className={`mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-2 text-sm font-semibold ${footer.danger ? "text-danger" : ""}`}>
+          <span>{footer.label}</span>
+          <span className="mono whitespace-nowrap">{formatCOP(footer.value)}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
