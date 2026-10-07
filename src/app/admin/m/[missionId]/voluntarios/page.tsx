@@ -4,8 +4,8 @@ import { PageBody, PageHeader } from "@/components/admin-shell";
 import { StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, labelOf } from "@/lib/catalogs";
-import { getMissionById, getMissionStats, listOrganizations, listRegistrations, missionHasTerms } from "@/lib/data";
-import { formatDateRange } from "@/lib/format";
+import { getMissionById, getMissionStats, listOrganizations, listRegistrations, missionHasTerms, registrationFiltersFromParams } from "@/lib/data";
+import { formatDateRange, toQuery } from "@/lib/format";
 import { can, canExport, participantScope } from "@/lib/permissions";
 
 export const metadata = { title: "Voluntarios" };
@@ -23,15 +23,20 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
   const canEditMission = can(user.role, "missions.manage");
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
-  const { q = "", estado = "", requisito = "", eliminada } = await searchParams;
-  let { grupo = "" } = await searchParams;
+  const sp = await searchParams;
+  const { eliminada } = sp;
   const scope = participantScope(user);
-  if (scope.kind === "organization") grupo = scope.organizationId; // un líder solo ve su grupo
+  const filters = registrationFiltersFromParams(sp);
+  if (scope.kind === "organization") filters.organizationId = scope.organizationId; // un líder solo ve su grupo
+  const { q, status: estado, organizationId: grupo, requisito } = filters;
   const hasTerms = missionHasTerms(mission);
   const base = `/admin/m/${mission.id}`;
+  // La descarga CSV conserva los filtros de la vista (el alcance del líder se vuelve a aplicar en el servidor).
+  const filtering = Boolean(q || estado || requisito || (scope.kind !== "organization" && grupo));
+  const exportHref = `${base}/export${toQuery({ q, estado, grupo: scope.kind === "organization" ? "" : grupo, requisito })}`;
 
   const [rows, organizations, stats] = await Promise.all([
-    listRegistrations(mission, { q, status: estado, organizationId: grupo, requisito }),
+    listRegistrations(mission, filters),
     listOrganizations(),
     getMissionStats(mission),
   ]);
@@ -55,8 +60,8 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
         actions={
           <>
             {exportAllowed ? (
-              <a href={`${base}/export`} className="btn-secondary">
-                Descargar CSV
+              <a href={exportHref} className="btn-secondary" title={filtering ? "Descarga solo las personas de esta vista, con los filtros aplicados" : "Descarga todas las personas de la misión"}>
+                {filtering ? "Descargar CSV (vista filtrada)" : "Descargar CSV"}
               </a>
             ) : null}
             {canEditMission ? (

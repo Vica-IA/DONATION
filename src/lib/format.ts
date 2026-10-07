@@ -90,3 +90,11 @@ export function normalizeName(value: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Cadena de consulta con los parámetros no vacíos ("" si no hay ninguno); sirve para conservar filtros en enlaces. */
+export function toQuery(params: Record<string, string | undefined>): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value) sp.set(key, value);
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}

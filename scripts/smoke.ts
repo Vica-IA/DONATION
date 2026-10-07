@@ -266,6 +266,13 @@ async function main() {
   assert.match(fin, /Presupuesto de gastos\s*\$\s?3\.500\.000/i);
   await page.goto(`${base}/finanzas?tipo=ingreso`);
   assert.match(await body(page), /1 de 2/);
+  assert.match((await page.getByRole("link", { name: "Descargar CSV" }).first().getAttribute("href")) ?? "", /\/finanzas\/export\?tipo=ingreso$/);
+  const finCsvFiltrado = await page.request.get(`${base}/finanzas/export?tipo=ingreso`);
+  assert.equal(finCsvFiltrado.status(), 200);
+  assert.match(finCsvFiltrado.headers()["content-disposition"] ?? "", /-finanzas-filtrado-/);
+  const finCsvFiltradoTexto = await finCsvFiltrado.text();
+  assert.match(finCsvFiltradoTexto, /Donación parroquia/);
+  assert.doesNotMatch(finCsvFiltradoTexto, /Bus Medellín/);
   await page.getByRole("link", { name: "Donación parroquia" }).click();
   await page.waitForURL("**/finanzas/**");
   await page.getByRole("button", { name: "Eliminar movimiento" }).click();
@@ -337,6 +344,19 @@ async function main() {
   assert.match(lines[0], /Grupo;Refugio;EPS/);
   assert.match(csv, /Refugio San José/);
   console.log("✓ exportación CSV");
+
+  // CSV con filtros: el enlace conserva los filtros de la vista y la descarga trae solo esas personas
+  await page.goto(`${base}/voluntarios?q=Juan`);
+  assert.match((await page.getByRole("link", { name: "Descargar CSV" }).first().getAttribute("href")) ?? "", /\/export\?q=Juan$/);
+  const [downloadFiltrado] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Descargar CSV" }).first().click()]);
+  assert.match(downloadFiltrado.suggestedFilename(), /-participantes-filtrado-/);
+  const csvFiltrado = fs.readFileSync((await downloadFiltrado.path())!, "utf8");
+  assert.equal(csvFiltrado.slice(1).trim().split(/\r?\n/).length, 2, "CSV filtrado: encabezado + Juan");
+  assert.match(csvFiltrado, /Juan Prueba Uno/);
+  assert.doesNotMatch(csvFiltrado, /María/);
+  const csvSinCoincidencias = await (await page.request.get(`${base}/export?q=nadie-con-este-nombre`)).text();
+  assert.equal(csvSinCoincidencias.slice(1).trim().split(/\r?\n/).length, 1, "CSV sin coincidencias: solo encabezado");
+  console.log("✓ exportación CSV con filtros");
 
   // Editar misión: cupos 2 y versión 2 de condiciones
   await page.goto(`${base}/editar`);

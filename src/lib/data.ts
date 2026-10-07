@@ -15,7 +15,7 @@ import {
   type TermsAcceptance,
   type Volunteer,
 } from "./db/schema";
-import type { RegistrationStatus } from "./catalogs";
+import { REGISTRATION_STATUS, type RegistrationStatus } from "./catalogs";
 import { nowIso } from "./format";
 import type { MissionInput, RegistrationInput } from "./validation";
 
@@ -179,6 +179,18 @@ export type RegistrationFilters = {
   /** 'condiciones' = sin aceptar condiciones; 'aporte' = aporte pendiente o parcial. */
   requisito?: string;
 };
+
+/** Filtros de la lista de voluntarios a partir de los parámetros de la URL; la página y la descarga CSV usan la misma lógica. */
+export function registrationFiltersFromParams(p: Record<string, string | undefined>): Required<RegistrationFilters> {
+  const estado = p.estado ?? "";
+  const requisito = p.requisito ?? "";
+  return {
+    q: (p.q ?? "").trim().slice(0, 120),
+    status: REGISTRATION_STATUS.some((o) => o.value === estado) ? estado : "",
+    organizationId: (p.grupo ?? "").trim().slice(0, 64),
+    requisito: requisito === "condiciones" || requisito === "aporte" ? requisito : "",
+  };
+}
 
 export async function listRegistrations(mission: Mission, filters: RegistrationFilters = {}): Promise<RegistrationRow[]> {
   const db = await getDb();

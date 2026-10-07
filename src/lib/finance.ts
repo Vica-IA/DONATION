@@ -214,6 +214,17 @@ export function summarizeFinance(entries: FinanceEntry[], aportes: ContributionS
 
 export type FinanceFilters = { q?: string; kind?: string; status?: string; category?: string; area?: string };
 
+/** Filtros de Finanzas a partir de los parámetros de la URL; la página y la descarga CSV usan la misma lógica. */
+export function financeFiltersFromParams(p: Record<string, string | undefined>): Required<FinanceFilters> {
+  return {
+    q: (p.q ?? "").trim().slice(0, 120),
+    kind: (p.tipo ?? "").slice(0, 20),
+    status: (p.estado ?? "").slice(0, 20),
+    category: (p.categoria ?? "").slice(0, 40),
+    area: (p.area ?? "").slice(0, 40),
+  };
+}
+
 /** Filtro en memoria (los movimientos de una misión son pocos). */
 export function filterEntries(rows: FinanceRow[], f: FinanceFilters): FinanceRow[] {
   const q = (f.q ?? "").trim().toLowerCase();

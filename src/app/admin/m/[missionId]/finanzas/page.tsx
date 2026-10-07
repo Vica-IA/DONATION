@@ -4,8 +4,8 @@ import { PageBody, PageHeader } from "@/components/admin-shell";
 import { requireUser } from "@/lib/auth";
 import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, GENERAL_AREA, areaInfo, labelOf } from "@/lib/catalogs";
 import { getMissionById } from "@/lib/data";
-import { contributionSummary, filterEntries, listEntries, summarizeFinance, sumAmounts, type CategoryLine } from "@/lib/finance";
-import { formatCOP, formatShortDate, percent } from "@/lib/format";
+import { contributionSummary, filterEntries, financeFiltersFromParams, listEntries, summarizeFinance, sumAmounts, type CategoryLine } from "@/lib/finance";
+import { formatCOP, formatShortDate, percent, toQuery } from "@/lib/format";
 import { canManageFinance, canViewFinance } from "@/lib/permissions";
 import { listAssignableUsers } from "@/lib/users";
 import { EntryForm } from "./entry-form";
@@ -30,8 +30,10 @@ export default async function FinancePage({ params, searchParams }: Props) {
 
   const [all, aportes, people] = await Promise.all([listEntries(mission.id), contributionSummary(mission), manage ? listAssignableUsers() : Promise.resolve([])]);
   const summary = summarizeFinance(all, aportes);
-  const filters = { q, kind: tipo, status: estado, category: categoria, area };
-  const filtering = Boolean(q || tipo || estado || categoria || area);
+  const filters = financeFiltersFromParams({ q, tipo, estado, categoria, area });
+  const filtering = Object.values(filters).some(Boolean);
+  // La descarga CSV conserva los filtros de la vista.
+  const exportHref = `${base}/finanzas/export${toQuery({ q, tipo, estado, categoria, area })}`;
   const rows = filterEntries(all, filters);
   const gastos = summary.porCategoria.filter((l) => l.kind === "gasto");
   const ingresos = summary.porCategoria.filter((l) => l.kind === "ingreso");
@@ -49,8 +51,8 @@ export default async function FinancePage({ params, searchParams }: Props) {
         }
         actions={
           <>
-            <a href={`${base}/finanzas/export`} className="btn-secondary">
-              Descargar CSV
+            <a href={exportHref} className="btn-secondary" title={filtering ? "Descarga solo los movimientos de esta vista, con los filtros aplicados" : "Descarga todos los movimientos de la misión"}>
+              {filtering ? "Descargar CSV (vista filtrada)" : "Descargar CSV"}
             </a>
             {manage ? (
               <a href="?nuevo=1#nuevo" className="btn-primary">
