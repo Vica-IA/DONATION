@@ -1,22 +1,5 @@
 import { z } from "zod";
-import {
-  ATTENDANCE,
-  BLOOD_TYPES,
-  DOC_TYPES,
-  MISSION_STATUS,
-  PAYMENT_STATUS,
-  REGISTRATION_STATUS,
-  ROLES,
-  SKILLS,
-  AREAS,
-  FINANCE_CATEGORIES,
-  FINANCE_KINDS,
-  FINANCE_STATUS,
-  TASK_STATUS,
-  financeCategoryKind,
-  USER_ROLES,
-  values,
-} from "./catalogs";
+import { AREAS, ATTENDANCE, BLOOD_TYPES, DOC_TYPES, DONATION_STATUS, DONATION_TYPES, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, MISSION_STATUS, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, SKILLS, TASK_STATUS, USER_ROLES, financeCategoryKind, values } from "./catalogs";
 
 export const PASSWORD_MIN_LENGTH = 8;
 
@@ -259,6 +242,25 @@ export const financeEntrySchema = z
   .refine((d) => financeCategoryKind(d.category) === d.kind, { message: "La categoría no corresponde al tipo de movimiento", path: ["category"] });
 
 export type FinanceEntryInput = z.infer<typeof financeEntrySchema>;
+
+/** Donación recibida por la misión (formulario corto de Finanzas → Donaciones). Se guarda como ingreso. */
+export const donationSchema = z
+  .object({
+    donor: trimmed(120).min(2, "Escribe quién dona"),
+    donationType: z.enum(values(DONATION_TYPES), { message: "Indica si es dinero o en especie" }),
+    status: z.enum(values(DONATION_STATUS)).default("recibida"),
+    amount: copAmount,
+    description: optionalText(160),
+    entryDate: z
+      .union([isoDate, z.literal("")])
+      .optional()
+      .transform((v) => (v === undefined || v === "" ? null : v)),
+    reference: optionalText(80),
+    notes: optionalText(600),
+  })
+  .refine((d) => d.donationType !== "especie" || Boolean(d.description), { message: "Describe qué se donó", path: ["description"] });
+
+export type DonationInput = z.infer<typeof donationSchema>;
 
 const hhmm = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora inválida (HH:MM)");
 const areaOrGeneral = z

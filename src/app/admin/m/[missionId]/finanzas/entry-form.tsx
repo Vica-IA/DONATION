@@ -25,6 +25,12 @@ export function EntryForm({ missionId, entry, people, defaultKind = "gasto" }: P
   const cls = (key: string) => `input${errors[key] ? " input-error" : ""}`;
   const initialKind = (str("kind", entry?.kind ?? defaultKind) as FinanceKind) || defaultKind;
   const [kind, setKind] = useState<FinanceKind>(initialKind);
+  // Tras registrar, React restablece el formulario; el tipo vuelve al inicial para que las categorías coincidan.
+  const [lastSaved, setLastSaved] = useState(state.saved);
+  if (state.saved !== lastSaved) {
+    setLastSaved(state.saved);
+    if (!entry) setKind(defaultKind);
+  }
   const categories = financeCategoriesFor(kind);
   const categoryDefault = str("category", entry?.category ?? "");
   const categoryValue = categories.some((c) => c.value === categoryDefault) ? categoryDefault : categories[0].value;
@@ -38,7 +44,7 @@ export function EntryForm({ missionId, entry, people, defaultKind = "gasto" }: P
       <div className="grid gap-3 sm:grid-cols-2">
         {FINANCE_KINDS.map((k) => (
           <label key={k.value} className="choice">
-            <input type="radio" name="kind" value={k.value} checked={kind === k.value} onChange={() => setKind(k.value)} className="mt-0.5" />
+            <input type="radio" name="kind" value={k.value} defaultChecked={initialKind === k.value} onChange={() => setKind(k.value)} className="mt-0.5" />
             <span>
               <span className="font-semibold">{k.label}</span>
               <span className="block text-xs text-muted">{k.value === "gasto" ? "Costos de la misión: transporte, alimentación, materiales…" : "Donaciones, patrocinios, recaudación y otros ingresos."}</span>

@@ -283,6 +283,42 @@ async function main() {
   assert.match(await finCsv.text(), /Bus Medellín/);
   console.log("✓ finanzas: presupuesto, ingreso, edición, filtro, eliminación y CSV");
 
+  // Donaciones: dinero y en especie, resumen, validación, CSV y efecto en Finanzas
+  await page.goto(`${base}/finanzas/donaciones`);
+  assert.match(await body(page), /Todavía no hay donaciones/);
+  await page.locator('input[name="donationType"][value="dinero"]').check();
+  await page.fill("#donor", "Familia Restrepo");
+  await page.fill("#amount", "500.000");
+  await page.selectOption("#status", "recibida");
+  await page.fill("#entryDate", "2026-10-01");
+  await page.fill("#reference", "Transferencia Bancolombia");
+  await page.getByRole("button", { name: "Registrar donación" }).click();
+  await page.locator('[data-donor="Familia Restrepo"]').waitFor();
+  let don = await body(page);
+  assert.match(don, /Donación registrada: Familia Restrepo/);
+  assert.match(don, /Dinero recibido\s*\$\s?500\.000/i);
+  await page.locator('input[name="donationType"][value="especie"]').check();
+  await page.fill("#donor", "Ferretería El Tornillo");
+  await page.fill("#amount", "800000");
+  await page.getByRole("button", { name: "Registrar donación" }).click();
+  await page.getByText("Describe qué se donó").waitFor(); // en especie exige descripción
+  await page.fill("#description", "20 bultos de cemento");
+  await page.getByRole("button", { name: "Registrar donación" }).click();
+  await page.locator('[data-donor="Ferretería El Tornillo"]').waitFor();
+  don = await body(page);
+  assert.match(don, /En especie \(valor estimado\)\s*\$\s?800\.000/i);
+  assert.match(don, /2 donaciones · 2 donantes/);
+  assert.match(don, /20 bultos de cemento/);
+  const donCsv = await (await page.request.get(`${base}/finanzas/export?categoria=donaciones,donaciones_especie`)).text();
+  assert.match(donCsv, /Familia Restrepo/);
+  assert.match(donCsv, /Ferretería El Tornillo/);
+  assert.doesNotMatch(donCsv, /Bus Medellín/);
+  await page.goto(`${base}/finanzas`);
+  fin = await body(page);
+  assert.match(fin, /Ingresos recibidos\s*\$\s?1\.300\.000/i);
+  assert.match(fin, /Donaciones en especie/);
+  console.log("✓ donaciones: dinero, en especie, validación, CSV y Finanzas");
+
   // Voluntarios: lista, filtro, gestión
   await page.goto(`${base}/voluntarios`);
   assert.match(await body(page), /2 registros en esta vista/);

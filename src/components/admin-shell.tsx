@@ -74,7 +74,8 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
               <NavLink href={`${base}/voluntarios`} label="Voluntarios" count={counts?.volunteers} />
               <NavLink href={`${base}/tareas`} label="Tareas" count={counts?.openTasks} />
               <NavLink href={`${base}/areas/${AREAS[0].value}`} label="Coordinación" activePrefix={`${base}/areas/`} />
-              {canViewFinance(user) ? <NavLink href={`${base}/finanzas`} label="Finanzas" /> : null}
+              {canViewFinance(user) ? <NavLink href={`${base}/finanzas`} label="Finanzas" match="exact" /> : null}
+              {canViewFinance(user) ? <NavLink href={`${base}/finanzas/donaciones`} label="Donaciones" /> : null}
             </div>
           </nav>
         ) : null}

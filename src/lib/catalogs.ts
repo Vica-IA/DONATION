@@ -165,6 +165,7 @@ export const FINANCE_CATEGORIES = [
   { value: "imprevistos", label: "Imprevistos", kind: "gasto" },
   { value: "otros_gastos", label: "Otros gastos", kind: "gasto" },
   { value: "donaciones", label: "Donaciones", kind: "ingreso" },
+  { value: "donaciones_especie", label: "Donaciones en especie", kind: "ingreso" },
   { value: "patrocinios", label: "Patrocinios y empresas", kind: "ingreso" },
   { value: "recaudacion", label: "Eventos de recaudación", kind: "ingreso" },
   { value: "aportes_extra", label: "Aportes adicionales de voluntarios", kind: "ingreso" },
@@ -180,6 +181,21 @@ export function financeCategoriesFor(kind: FinanceKind) {
 export function financeCategoryKind(category: string): FinanceKind | null {
   return FINANCE_CATEGORIES.find((c) => c.value === category)?.kind ?? null;
 }
+
+/** Tipo de donación que recibe la misión. En especie se registra con su valor estimado. */
+export const DONATION_TYPES = [
+  { value: "dinero", label: "Dinero" },
+  { value: "especie", label: "En especie" },
+] as const satisfies readonly Option[];
+
+/** Estado de una donación; se traduce al estado del movimiento (recibida = ejecutado, prometida = comprometido). */
+export const DONATION_STATUS = [
+  { value: "recibida", label: "Recibida" },
+  { value: "prometida", label: "Prometida" },
+] as const satisfies readonly Option[];
+
+export type DonationType = (typeof DONATION_TYPES)[number]["value"];
+export type DonationStatus = (typeof DONATION_STATUS)[number]["value"];
 
 export const MISSION_STATUS = [
   { value: "planificacion", label: "En planificación" },

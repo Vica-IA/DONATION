@@ -8,7 +8,8 @@ import { createEntry, deleteEntry, getEntry, updateEntry } from "@/lib/finance";
 import { canManageFinance } from "@/lib/permissions";
 import { financeEntrySchema, flattenErrors, formToObject, type FieldErrors } from "@/lib/validation";
 
-export type FinanceFormState = { errors: FieldErrors; values: Record<string, unknown>; saved?: boolean };
+/** `saved` lleva el id del movimiento guardado; cambia en cada registro nuevo para que el formulario se reinicie. */
+export type FinanceFormState = { errors: FieldErrors; values: Record<string, unknown>; saved?: string };
 
 function revalidateMission(missionId: string) {
   revalidatePath(`/admin/m/${missionId}`, "layout");
@@ -22,9 +23,9 @@ export async function createEntryAction(missionId: string, _prev: FinanceFormSta
   const raw = formToObject(formData);
   const parsed = financeEntrySchema.safeParse(raw);
   if (!parsed.success) return { errors: flattenErrors(parsed.error), values: raw };
-  await createEntry(missionId, parsed.data, user.name);
+  const entry = await createEntry(missionId, parsed.data, user.name);
   revalidateMission(missionId);
-  return { errors: {}, values: {}, saved: true };
+  return { errors: {}, values: {}, saved: entry.id };
 }
 
 export async function updateEntryAction(missionId: string, entryId: string, _prev: FinanceFormState, formData: FormData): Promise<FinanceFormState> {
@@ -37,7 +38,7 @@ export async function updateEntryAction(missionId: string, entryId: string, _pre
   if (!parsed.success) return { errors: flattenErrors(parsed.error), values: raw };
   await updateEntry(entryId, parsed.data, user.name);
   revalidateMission(missionId);
-  return { errors: {}, values: {}, saved: true };
+  return { errors: {}, values: {}, saved: entryId };
 }
 
 export async function deleteEntryAction(missionId: string, entryId: string): Promise<void> {

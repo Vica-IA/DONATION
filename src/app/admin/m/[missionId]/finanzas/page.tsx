@@ -9,7 +9,7 @@ import { formatCOP, formatShortDate, percent, toQuery } from "@/lib/format";
 import { canManageFinance, canViewFinance } from "@/lib/permissions";
 import { listAssignableUsers } from "@/lib/users";
 import { EntryForm } from "./entry-form";
-import { FinanceStatusPill, KindBadge, Money, areaLabel } from "./finance-bits";
+import { FinanceStatusPill, KindBadge, Kpi, Money, areaLabel } from "./finance-bits";
 
 export const metadata = { title: "Finanzas" };
 
@@ -51,6 +51,9 @@ export default async function FinancePage({ params, searchParams }: Props) {
         }
         actions={
           <>
+            <Link href={`${base}/finanzas/donaciones`} className="btn-secondary">
+              Donaciones
+            </Link>
             <a href={exportHref} className="btn-secondary" title={filtering ? "Descarga solo los movimientos de esta vista, con los filtros aplicados" : "Descarga todos los movimientos de la misión"}>
               {filtering ? "Descargar CSV (vista filtrada)" : "Descargar CSV"}
             </a>
@@ -357,14 +360,3 @@ function CategoryRow({ line, base }: { line: CategoryLine; base: string }) {
   );
 }
 
-function Kpi({ label, value, sub, tone = "default" }: { label: string; value: string; sub?: string; tone?: "default" | "brand" | "danger" }) {
-  const box = tone === "brand" ? "border-brand-200 bg-brand-50" : tone === "danger" ? "border-red-200 bg-red-50" : "border-line bg-white";
-  const text = tone === "brand" ? "text-brand-800" : tone === "danger" ? "text-danger" : "text-ink";
-  return (
-    <div className={`rounded-2xl border p-4 ${box}`}>
-      <p className="kpi-label">{label}</p>
-      <p className={`mono mt-1 text-2xl font-extrabold tracking-tight ${text}`}>{value}</p>
-      {sub ? <p className="mt-1 text-xs text-muted">{sub}</p> : null}
-    </div>
-  );
-}

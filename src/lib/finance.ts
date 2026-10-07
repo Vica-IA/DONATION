@@ -5,7 +5,7 @@ import { log } from "./data";
 import { getDb } from "./db";
 import { financeEntries, missionRegistrations, users, type FinanceEntry, type Mission } from "./db/schema";
 import { nowIso } from "./format";
-import type { FinanceEntryInput } from "./validation";
+import type { DonationInput, FinanceEntryInput } from "./validation";
 
 export type FinanceRow = FinanceEntry & { ownerName: string | null };
 
@@ -220,7 +220,7 @@ export function financeFiltersFromParams(p: Record<string, string | undefined>):
     q: (p.q ?? "").trim().slice(0, 120),
     kind: (p.tipo ?? "").slice(0, 20),
     status: (p.estado ?? "").slice(0, 20),
-    category: (p.categoria ?? "").slice(0, 40),
+    category: (p.categoria ?? "").slice(0, 80), // admite varias separadas por coma
     area: (p.area ?? "").slice(0, 40),
   };
 }
@@ -231,7 +231,7 @@ export function filterEntries(rows: FinanceRow[], f: FinanceFilters): FinanceRow
   return rows.filter((r) => {
     if (f.kind && r.kind !== f.kind) return false;
     if (f.status && r.status !== f.status) return false;
-    if (f.category && r.category !== f.category) return false;
+    if (f.category && !f.category.split(",").includes(r.category)) return false;
     if (f.area && (r.area ?? "") !== f.area) return false;
     if (q) {
       const hay = [r.concept, r.counterparty, r.reference, r.notes, r.ownerName].filter(Boolean).join(" ").toLowerCase();
@@ -243,4 +243,56 @@ export function filterEntries(rows: FinanceRow[], f: FinanceFilters): FinanceRow
 
 export function sumAmounts(rows: FinanceRow[], kind: FinanceKind): number {
   return rows.filter((r) => r.kind === kind).reduce((acc, r) => acc + r.amount, 0);
+}
+
+// ---------- Donaciones ----------
+
+/** Categorías de ingreso que son donaciones: en dinero y en especie (valor estimado). */
+export const DONATION_CATEGORIES = ["donaciones", "donaciones_especie"] as const;
+
+/** Traduce el formulario corto de donación a un movimiento de ingreso. */
+export function donationToEntryInput(d: DonationInput): FinanceEntryInput {
+  const inKind = d.donationType === "especie";
+  return {
+    kind: "ingreso",
+    status: d.status === "recibida" ? "ejecutado" : "comprometido",
+    category: inKind ? "donaciones_especie" : "donaciones",
+    area: null,
+    concept: d.description ?? `Donación de ${d.donor}`,
+    amount: d.amount,
+    entryDate: d.entryDate,
+    counterparty: d.donor,
+    reference: d.reference,
+    ownerUserId: "",
+    notes: d.notes,
+  };
+}
+
+export function listDonations(rows: FinanceRow[]): FinanceRow[] {
+  return rows.filter((r) => (DONATION_CATEGORIES as readonly string[]).includes(r.category));
+}
+
+export type DonationSummary = {
+  /** Dinero ya recibido. */
+  received: number;
+  /** Valor estimado de lo recibido en especie. */
+  inKind: number;
+  /** Prometido (dinero o especie) que todavía no llega. */
+  promised: number;
+  donors: number;
+  count: number;
+};
+
+export function summarizeDonations(rows: FinanceRow[]): DonationSummary {
+  const out: DonationSummary = { received: 0, inKind: 0, promised: 0, donors: 0, count: rows.length };
+  const donors = new Set<string>();
+  for (const r of rows) {
+    if (r.counterparty?.trim()) donors.add(r.counterparty.trim().toLowerCase());
+    if (r.status === "ejecutado") {
+      if (r.category === "donaciones_especie") out.inKind += r.amount;
+      else out.received += r.amount;
+    } else if (r.status === "comprometido") out.promised += r.amount;
+  }
+  out.donors = donors.size;
+  return out;
 }

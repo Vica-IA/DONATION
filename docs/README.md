@@ -43,6 +43,7 @@
 | 2026-09-30 | Página pública de la misión (`/misiones/choco-2026-01`) para todos los voluntarios: ahora y siguiente, avisos, programa por día, cuadrillas, logística y contactos de coordinación. En el panel, administrador, líderes y coordinadores publican avisos, arman el programa y organizan cuadrillas con las personas confirmadas. |
 | 2026-10-05 | Ficha de voluntario: el valor recibido del aporte acepta puntos de miles (400.000) y deja de perderse; la bitácora registra el cambio de valor. |
 | 2026-10-07 | Descargar CSV en Voluntarios y Finanzas respeta los filtros aplicados en la vista (el archivo se llama …-filtrado-…). |
+| 2026-10-07 | Finanzas → Donaciones: registro de donaciones recibidas o prometidas, en dinero o en especie (valor estimado), con resumen, lista y CSV; entran como ingresos de la misión. |
 
 ## Puntos por resolver entre documentos
 
