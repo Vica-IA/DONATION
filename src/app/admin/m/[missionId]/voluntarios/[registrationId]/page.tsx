@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { ATTENDANCE, BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, ROLES, SKILLS, labelOf } from "@/lib/catalogs";
 import { siteUrl } from "@/lib/config";
 import { getRegistration, listOrganizations, missionHasTerms } from "@/lib/data";
+import { listFunds } from "@/lib/finance";
 import { formatCOP, formatDate, formatDateTime } from "@/lib/format";
 import { can, canManageRegistration, canSeeSensitive } from "@/lib/permissions";
 import { getSquad } from "@/lib/program";
@@ -32,6 +33,7 @@ export default async function ParticipantPage({
   const { confirmar } = await searchParams;
   const user = await requireUser(`/admin/m/${missionId}/voluntarios/${id}`);
   const [detail, organizations] = await Promise.all([getRegistration(id), listOrganizations()]);
+  const funds = detail ? await listFunds(detail.mission.id) : [];
   if (!detail || detail.mission.id !== missionId) notFound();
   const { registration: r, volunteer: v, organization: o, mission, activity, termsAcceptance, acceptances } = detail;
   const squad = r.squadId ? await getSquad(r.squadId) : null;
@@ -72,7 +74,10 @@ export default async function ParticipantPage({
     ],
     ["Habilidades", skills.length ? skills.map((s) => labelOf(SKILLS, s)).join(", ") : "—"],
     ["Experiencia en obra", v.constructionExperience ? "Sí" : "No"],
-    ["Aporte", `${labelOf(PAYMENT_STATUS, r.paymentStatus)}${r.paymentAmount ? ` · ${formatCOP(r.paymentAmount)}` : ""}${r.paymentNotes ? ` · ${r.paymentNotes}` : ""}`],
+    [
+      "Aporte",
+      `${labelOf(PAYMENT_STATUS, r.paymentStatus)}${r.paymentAmount ? ` · ${formatCOP(r.paymentAmount)}` : ""}${r.paymentFundId ? ` · ${funds.find((f) => f.id === r.paymentFundId)?.label ?? "cuenta eliminada"}` : ""}${r.paymentReceivedBy ? ` · recibido por ${r.paymentReceivedBy}` : ""}${r.paymentNotes ? ` · ${r.paymentNotes}` : ""}`,
+    ],
     ["Comentarios", r.comments ?? "—"],
     ["Registrado", formatDateTime(r.createdAt)],
     ["Confirmado", r.confirmedAt ? formatDateTime(r.confirmedAt) : "—"],
@@ -109,7 +114,7 @@ export default async function ParticipantPage({
       {v.email ? <p className="text-sm text-muted">{v.email}</p> : null}
       <div className="grid gap-6 lg:grid-cols-2">
         {canManage ? (
-          <ParticipantForm registration={r} volunteer={v} organizations={organizations} />
+          <ParticipantForm registration={r} volunteer={v} organizations={organizations} funds={funds} />
         ) : (
           <section className="card">
             <h2 className="section-title">Gestión</h2>

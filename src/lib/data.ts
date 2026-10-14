@@ -416,6 +416,9 @@ export type AdminRegistrationUpdate = {
   paymentStatus: string;
   paymentAmount: number | null;
   paymentNotes: string | null;
+  paymentFundId: string;
+  paymentReceivedBy: string | null;
+  paymentDate: string | null;
   fullName: string;
   phone: string;
   email: string | null;
@@ -440,6 +443,9 @@ export async function updateRegistrationByAdmin(id: string, input: AdminRegistra
       paymentStatus: input.paymentStatus,
       paymentAmount: input.paymentAmount,
       paymentNotes: input.paymentNotes,
+      paymentFundId: input.paymentFundId || null,
+      paymentReceivedBy: input.paymentReceivedBy,
+      paymentDate: input.paymentDate,
       confirmedAt: input.status === "confirmado" ? (current.registration.confirmedAt ?? now) : current.registration.confirmedAt,
       updatedAt: now,
     })

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AREAS, ATTENDANCE, BLOOD_TYPES, DOC_TYPES, DONATION_STATUS, DONATION_TYPES, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, MISSION_STATUS, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, SKILLS, TASK_STATUS, USER_ROLES, financeCategoryKind, values } from "./catalogs";
+import { AREAS, ATTENDANCE, BLOOD_TYPES, BUDGET_KINDS, DOC_TYPES, EXPENSE_STATUS, FINANCE_CATEGORIES, FUND_TYPES, INCOME_SOURCES, INCOME_STATUS, MISSION_STATUS, PAYMENT_STATUS, PAY_KINDS, REGISTRATION_STATUS, ROLES, SKILLS, TASK_STATUS, USER_ROLES, WISH_CATEGORIES, values } from "./catalogs";
 
 export const PASSWORD_MIN_LENGTH = 8;
 
@@ -73,6 +73,12 @@ export const adminRegistrationSchema = z.object({
     .optional()
     .transform((v) => (v === undefined || v === "" ? null : v)),
   paymentNotes: optionalText(300),
+  paymentFundId: z.string().trim().max(64).optional().default(""),
+  paymentReceivedBy: optionalText(80),
+  paymentDate: z
+    .union([isoDate, z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? null : v)),
   fullName: trimmed(120).min(3, "Nombre requerido"),
   phone,
   email: z
@@ -219,48 +225,109 @@ const copAmount = z.preprocess(
     .max(100_000_000_000, "Valor demasiado alto"),
 );
 
-export const financeEntrySchema = z
+const optionalDate = z
+  .union([isoDate, z.literal("")])
+  .optional()
+  .transform((v) => (v === undefined || v === "" ? null : v));
+
+const optionalId = z.string().trim().max(64).optional().default("");
+
+/** Ingreso: aporte de un voluntario (se guarda en su ficha), donación de un grupo o de una fuente externa. */
+export const incomeSchema = z
   .object({
-    kind: z.enum(values(FINANCE_KINDS), { message: "Indica si es gasto o ingreso" }),
-    status: z.enum(values(FINANCE_STATUS)).default("proyectado"),
-    category: z.enum(values(FINANCE_CATEGORIES), { message: "Selecciona una categoría" }),
-    area: z
-      .union([z.enum(values(AREAS)), z.literal("general"), z.literal("")])
-      .optional()
-      .transform((v) => (v === undefined || v === "" ? null : v)),
-    concept: trimmed(160).min(3, "Describe el movimiento"),
+    source: z.enum(values(INCOME_SOURCES), { message: "Indica la fuente del ingreso" }),
+    registrationId: optionalId,
+    who: trimmed(120).optional().default(""),
     amount: copAmount,
-    entryDate: z
-      .union([isoDate, z.literal("")])
+    status: z.enum(values(INCOME_STATUS)).default("recibido"),
+    entryDate: optionalDate,
+    fundId: optionalId,
+    registeredBy: trimmed(80).optional().default(""),
+    note: optionalText(300),
+    inKind: z
+      .union([z.literal("on"), z.literal("true"), z.literal("")])
       .optional()
-      .transform((v) => (v === undefined || v === "" ? null : v)),
-    counterparty: optionalText(120),
-    reference: optionalText(80),
-    ownerUserId: z.string().trim().max(64).optional().default(""),
-    notes: optionalText(600),
+      .transform((v) => v === "on" || v === "true"),
   })
-  .refine((d) => financeCategoryKind(d.category) === d.kind, { message: "La categoría no corresponde al tipo de movimiento", path: ["category"] });
+  .refine((d) => d.source !== "voluntario" || Boolean(d.registrationId), { message: "Elige a la persona", path: ["registrationId"] })
+  .refine((d) => d.source === "voluntario" || d.who.trim().length >= 2, { message: "Indica quién aporta", path: ["who"] })
+  .refine((d) => d.status !== "recibido" || Boolean(d.fundId), { message: "Indica a qué cuenta llegó", path: ["fundId"] });
 
-export type FinanceEntryInput = z.infer<typeof financeEntrySchema>;
+export type IncomeInput = z.infer<typeof incomeSchema>;
 
-/** Donación recibida por la misión (formulario corto de Finanzas → Donaciones). Se guarda como ingreso. */
-export const donationSchema = z
+/** Gasto: categoría y tipo, concepto, valor, fijo o variable, estado y, si está pagado, desde dónde se pagó. */
+export const expenseSchema = z
   .object({
-    donor: trimmed(120).min(2, "Escribe quién dona"),
-    donationType: z.enum(values(DONATION_TYPES), { message: "Indica si es dinero o en especie" }),
-    status: z.enum(values(DONATION_STATUS)).default("recibida"),
+    category: z.enum(values(FINANCE_CATEGORIES.filter((c) => c.kind === "gasto")), { message: "Selecciona una categoría" }),
+    sub: optionalText(60),
+    concept: trimmed(160).min(3, "Escribe el concepto del gasto"),
     amount: copAmount,
-    description: optionalText(160),
-    entryDate: z
-      .union([isoDate, z.literal("")])
-      .optional()
-      .transform((v) => (v === undefined || v === "" ? null : v)),
-    reference: optionalText(80),
-    notes: optionalText(600),
+    vendor: optionalText(120),
+    budgetKind: z.enum(values(BUDGET_KINDS)).default("variable"),
+    status: z.enum(values(EXPENSE_STATUS)).default("pendiente"),
+    entryDate: optionalDate,
+    registeredBy: trimmed(80).optional().default(""),
+    payKind: z.enum(values(PAY_KINDS)).default("fund"),
+    fundId: optionalId,
+    payPerson: optionalText(80),
+    payRef: optionalText(80),
   })
-  .refine((d) => d.donationType !== "especie" || Boolean(d.description), { message: "Describe qué se donó", path: ["description"] });
+  .refine((d) => d.status !== "pagado" || d.payKind !== "fund" || Boolean(d.fundId), { message: "Indica desde qué cuenta se pagó", path: ["fundId"] })
+  .refine((d) => d.status !== "pagado" || d.payKind !== "person" || Boolean(d.payPerson), { message: "Indica quién adelantó el dinero", path: ["payPerson"] });
 
-export type DonationInput = z.infer<typeof donationSchema>;
+export type ExpenseInput = z.infer<typeof expenseSchema>;
+
+/** Ítem de la lista de compras. */
+export const wishItemSchema = z.object({
+  name: trimmed(120).min(2, "Escribe el nombre del ítem"),
+  category: z.enum(values(WISH_CATEGORIES), { message: "Selecciona una categoría" }),
+  qty: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? "1" : v), z.coerce.number({ message: "Cantidad inválida" }).int("Sin decimales").min(1, "Mínimo 1").max(100_000)),
+  unitCost: copAmount,
+  note: optionalText(200),
+});
+
+export type WishItemInput = z.infer<typeof wishItemSchema>;
+
+/** Compra de un ítem de la lista: con qué cuenta se pagó, quién compró y la referencia. */
+export const buySchema = z.object({
+  fundId: trimmed(64).min(1, "Indica con qué cuenta se pagó"),
+  boughtBy: trimmed(80).optional().default(""),
+  reference: optionalText(80),
+  entryDate: optionalDate,
+});
+
+export type BuyInput = z.infer<typeof buySchema>;
+
+/** Traslado entre dos cuentas distintas. */
+export const transferSchema = z
+  .object({
+    fromFundId: trimmed(64).min(1, "Elige la cuenta de origen"),
+    toFundId: trimmed(64).min(1, "Elige la cuenta de destino"),
+    amount: copAmount,
+    performedBy: trimmed(80).optional().default(""),
+    note: optionalText(200),
+    entryDate: optionalDate,
+  })
+  .refine((d) => d.fromFundId !== d.toFundId, { message: "Elige dos cuentas distintas", path: ["toFundId"] });
+
+export type TransferInput = z.infer<typeof transferSchema>;
+
+/** Cuenta de tesorería. */
+export const fundSchema = z.object({
+  ownerName: trimmed(60).min(2, "Escribe el nombre del responsable"),
+  type: z.enum(values(FUND_TYPES), { message: "Banco o efectivo" }),
+  label: trimmed(80).min(2, "Escribe un nombre para la cuenta"),
+});
+
+export type FundInput = z.infer<typeof fundSchema>;
+
+/** Reembolso de un gasto que adelantó una persona: desde qué cuenta se le devolvió. */
+export const reimburseSchema = z.object({
+  fundId: trimmed(64).min(1, "Indica desde qué cuenta se reembolsó"),
+  entryDate: optionalDate,
+});
+
+export type ReimburseInput = z.infer<typeof reimburseSchema>;
 
 const hhmm = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora inválida (HH:MM)");
 const areaOrGeneral = z

@@ -2,439 +2,703 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/admin-shell";
 import { requireUser } from "@/lib/auth";
-import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, GENERAL_AREA, areaInfo, isFixedExpenseCategory, labelOf } from "@/lib/catalogs";
-import { getMissionById } from "@/lib/data";
-import { contributionSummary, filterEntries, financeFiltersFromParams, listEntries, planFromSummary, summarizeFinance, sumAmounts, type CategoryLine } from "@/lib/finance";
+import { FINANCE_CATEGORIES, WISH_CATEGORIES, labelOf, type ExpenseStatus } from "@/lib/catalogs";
+import { getMissionById, listOrganizations } from "@/lib/data";
+import { expenseStatusOf, financeModel, financeSummaryText, incomeStatusOf, payText, wishCategoryInfo, type FinanceModel } from "@/lib/finance";
 import { formatCOP, formatShortDate, percent, toQuery } from "@/lib/format";
 import { canManageFinance, canViewFinance } from "@/lib/permissions";
 import { listAssignableUsers } from "@/lib/users";
-import { EntryForm } from "./entry-form";
-import { FinanceStatusPill, KindBadge, Kpi, Money, areaLabel } from "./finance-bits";
+import { cycleExpenseStatusAction, deleteEntryAction, deleteWishItemAction, moveWishItemAction, returnWishItemAction, toggleIncomeStatusAction } from "./actions";
+import { FilterChip, Money, Pill } from "./finance-bits";
+import { BuyForm, ExpenseForm, FundsPanel, IncomeForm, Modal, ReimburseForm, TransferForm, WishForm, type FundOption, type VolunteerOption } from "./modals";
 
 export const metadata = { title: "Finanzas" };
 
-type Props = {
-  params: Promise<{ missionId: string }>;
-  searchParams: Promise<{ q?: string; tipo?: string; estado?: string; categoria?: string; area?: string; nuevo?: string }>;
-};
+type Params = { ingresos?: string; gastos?: string; lista?: string; nuevo?: string; comprar?: string; traslado?: string; cuentas?: string; reembolso?: string; msg?: string };
+type Props = { params: Promise<{ missionId: string }>; searchParams: Promise<Params> };
+
+const money = formatCOP;
+
+/** Fila de una lista: en móvil, texto y pastillas arriba y el valor abajo; en pantallas anchas, valor | texto | pastillas. */
+const ROW = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1 px-4 py-2.5 sm:grid-cols-[118px_minmax(0,1fr)_auto] sm:gap-3 sm:px-[18px]";
+const AMOUNT = "order-3 col-span-2 text-left sm:order-none sm:col-span-1 sm:text-right";
 
 export default async function FinancePage({ params, searchParams }: Props) {
   const { missionId } = await params;
+  const sp = await searchParams;
   const user = await requireUser(`/admin/m/${missionId}/finanzas`);
   if (!canViewFinance(user)) redirect(`/admin/m/${missionId}?denegado=1`);
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
-  const { q = "", tipo = "", estado = "", categoria = "", area = "", nuevo } = await searchParams;
   const manage = canManageFinance(user);
+  const [model, orgs, assignable] = await Promise.all([financeModel(mission), listOrganizations(), manage ? listAssignableUsers() : Promise.resolve([])]);
+  const t = model.totals;
   const base = `/admin/m/${mission.id}`;
+  const incF = sp.ingresos || "todos";
+  const expF = sp.gastos || "todas";
+  const wishF = sp.lista || "todas";
+  const filters = { ingresos: sp.ingresos, gastos: sp.gastos, lista: sp.lista };
+  const href = (extra: Record<string, string | undefined>) => `${base}/finanzas${toQuery({ ...filters, ...extra })}`;
+  const returnTo = href({});
+  const closeHref = returnTo;
+  const people = [...new Set([...model.funds.filter((f) => f.active).map((f) => f.ownerName), ...assignable.map((u) => u.name), user.name])];
+  const fundOptions: FundOption[] = model.funds.map((f) => ({ id: f.id, label: f.label, ownerName: f.ownerName, type: f.type, balance: f.balance, active: f.active }));
+  const volunteerOptions: VolunteerOption[] = model.volunteers.map((v) => ({
+    id: v.registrationId,
+    label: `${v.name} · ${v.kind === "recibido" ? "ya recibido" : v.kind === "parcial" ? "pago parcial" : v.kind === "exento" ? "exento" : "pendiente"}`,
+  }));
+  const groups = orgs.map((o) => o.name);
+  const common = { missionId: mission.id, returnTo, closeHref, funds: fundOptions, people, me: user.name };
 
-  const [all, aportes, people] = await Promise.all([listEntries(mission.id), contributionSummary(mission), manage ? listAssignableUsers() : Promise.resolve([])]);
-  const summary = summarizeFinance(all, aportes);
-  const plan = planFromSummary(summary);
-  const filters = financeFiltersFromParams({ q, tipo, estado, categoria, area });
-  const filtering = Object.values(filters).some(Boolean);
-  // La descarga CSV conserva los filtros de la vista.
-  const exportHref = `${base}/finanzas/export${toQuery({ q, tipo, estado, categoria, area })}`;
-  const rows = filterEntries(all, filters);
-  const gastos = summary.porCategoria.filter((l) => l.kind === "gasto");
-  const ingresos = summary.porCategoria.filter((l) => l.kind === "ingreso");
-  const peopleOptions = people.map((p) => ({ id: p.id, label: `${p.name}${p.area ? ` · ${areaInfo(p.area).short}` : p.organizationName ? ` · ${p.organizationName}` : ""}` }));
+  // ----- Lectura del plan -----
+  const steps = [
+    { op: "", label: "Ingresos *", value: t.incTotal, note: `${money(t.incRec)} recibidos` },
+    { op: "−", label: "Gastos fijos", value: t.fijos, note: `${money(t.fijosPagados)} pagados` },
+    { op: "=", label: "Presupuesto disponible", value: t.disponible, note: "tras cubrir los fijos", danger: t.disponible < 0 },
+    { op: "−", label: "Ejecutado variable", value: t.variables, note: "actividades y compras hechas" },
+    { op: "−", label: "Lista pendiente", value: t.wishPending, note: `${t.pendingCount} ítems por comprar` },
+    { op: "=", label: t.saldoTotal < 0 ? "Meta de recaudo" : "Saldo total", value: Math.abs(t.saldoTotal), note: t.saldoTotal < 0 ? "falta por recaudar" : "sobrante", final: true },
+  ];
+  const coverPct = percent(t.incTotal, t.fijos);
+  const coverText = t.incTotal >= t.fijos ? `Gastos fijos cubiertos · quedan ${money(t.disponible)} de presupuesto disponible` : `Los ingresos cubren ${coverPct}% de los gastos fijos · faltan ${money(t.fijos - t.incTotal)}`;
+
+  // ----- Ingresos -----
+  const vols = model.volunteers;
+  const volRec = vols.filter((v) => v.kind === "recibido").length;
+  const volPend = vols.filter((v) => v.kind === "estimado" || v.kind === "parcial").length;
+  const volTotal = vols.reduce((acc, v) => acc + Math.max(v.expected, v.received), 0);
+  const showVols = incF === "todos" || incF === "voluntarios";
+  const otherIncomes = model.incomes.filter((e) => incF === "todos" || (incF === "grupos" && e.source === "grupo") || (incF === "externos" && e.source !== "grupo"));
+
+  // ----- Gastos -----
+  type Item = { id: string; category: string; amount: number; concept: string; sub: string; pay: string; payPending: boolean; status: ExpenseStatus | "comprado"; fromWish: boolean; reimbursable: boolean };
+  const items: Item[] = [
+    ...model.expenses.map(
+      (e): Item => ({
+        id: e.id,
+        category: e.category,
+        amount: e.amount,
+        concept: e.concept,
+        sub: [e.sub, e.counterparty].filter(Boolean).join(" · "),
+        pay: payText(e, model.fundLabel),
+        payPending: e.payKind === "person" && !e.reimbursedFundId,
+        status: expenseStatusOf(e),
+        fromWish: false,
+        reimbursable: e.status === "ejecutado" && e.payKind === "person" && !e.reimbursedFundId,
+      }),
+    ),
+    ...model.wish
+      .filter((w) => w.status === "comprado")
+      .map(
+        (w): Item => ({
+          id: w.id,
+          category: "materiales",
+          amount: w.total,
+          concept: w.name,
+          sub: [w.detail, "desde la lista de compras"].filter(Boolean).join(" · "),
+          pay: `Pagado desde ${model.fundLabel(w.fundId)}${w.boughtBy ? ` · por ${w.boughtBy}` : ""}${w.reference ? ` · ${w.reference}` : ""}`,
+          payPending: false,
+          status: "comprado",
+          fromWish: true,
+          reimbursable: false,
+        }),
+      ),
+  ];
+  const expenseCats = FINANCE_CATEGORIES.filter((c) => c.kind === "gasto");
+  const usedCats = expenseCats.filter((c) => items.some((i) => i.category === c.value));
+  const expenseGroups = usedCats
+    .filter((c) => expF === "todas" || expF === c.value)
+    .map((c) => {
+      const list = items.filter((i) => i.category === c.value);
+      return { ...c, fixed: list.some((i) => model.expenses.find((e) => e.id === i.id && (e.budgetKind ? e.budgetKind === "fijo" : true)) !== undefined) && Boolean((c as { fijo?: boolean }).fijo), items: list, subtotal: list.reduce((a, i) => a + i.amount, 0) };
+    });
+  const payBreakdown = [
+    ...model.funds
+      .map((f) => {
+        const paid = model.expenses.filter((e) => e.status === "ejecutado" && e.payKind === "fund" && e.fundId === f.id);
+        const bought = model.wish.filter((w) => w.status === "comprado" && w.fundId === f.id);
+        return { label: f.label, value: paid.reduce((a, e) => a + e.amount, 0) + bought.reduce((a, w) => a + w.total, 0), n: paid.length + bought.length, warn: false };
+      })
+      .filter((x) => x.n > 0),
+    ...[...new Set(model.expenses.filter((e) => e.status === "ejecutado" && e.payKind === "person" && !e.reimbursedFundId).map((e) => e.payPerson ?? "—"))].map((p) => ({
+      label: `Reembolso pendiente a ${p}`,
+      value: model.expenses.filter((e) => e.status === "ejecutado" && e.payKind === "person" && !e.reimbursedFundId && (e.payPerson ?? "—") === p).reduce((a, e) => a + e.amount, 0),
+      n: 1,
+      warn: true,
+    })),
+  ];
+
+  // ----- Lista de compras -----
+  const wishRows = model.wish.map((w, idx) => ({ w, n: idx + 1 })).filter(({ w }) => wishF === "todas" || w.category === wishF);
+  const coveredW = percent(t.coveredSum, t.wishPending);
+
+  // ----- Tesorería -----
+  const owners = [...new Set(model.funds.map((f) => f.ownerName))];
+  const treasury = owners
+    .map((o) => {
+      const fs = model.funds.filter((f) => f.ownerName === o && (f.active || f.balance !== 0));
+      return { owner: o, funds: fs, total: fs.reduce((a, f) => a + f.balance, 0) };
+    })
+    .filter((x) => x.funds.length > 0);
+
+  const buyItem = sp.comprar ? model.wish.find((w) => w.id === sp.comprar && w.status !== "comprado") : null;
+  const reimburseEntry = sp.reembolso ? model.expenses.find((e) => e.id === sp.reembolso && e.payKind === "person" && !e.reimbursedFundId) : null;
 
   return (
     <>
       <PageHeader
         kicker={mission.name}
-        title="Finanzas"
-        badge={
-          <span className="text-xs text-muted">
-            Balance actual <Money amount={summary.balanceActual} className="font-semibold" /> · {all.length} movimientos
-          </span>
-        }
+        title="Finanzas y donaciones"
+        badge={<span className="text-xs text-muted">{t.meta > 0 ? `Meta de recaudo ${money(t.meta)}` : `Lista cubierta · sobran ${money(t.saldoTotal)}`}</span>}
         actions={
-          <>
-            <Link href={`${base}/finanzas/donaciones`} className="btn-secondary">
-              Donaciones
-            </Link>
-            <a href={exportHref} className="btn-secondary" title={filtering ? "Descarga solo los movimientos de esta vista, con los filtros aplicados" : "Descarga todos los movimientos de la misión"}>
-              {filtering ? "Descargar CSV (vista filtrada)" : "Descargar CSV"}
-            </a>
-            {manage ? (
-              <a href="?nuevo=1#nuevo" className="btn-primary">
-                + Nuevo movimiento
-              </a>
-            ) : null}
-          </>
+          <a href={`${base}/finanzas/export`} className="btn-secondary" title="Descarga los ingresos y gastos registrados">
+            Descargar CSV
+          </a>
         }
       />
       <PageBody>
-        {manage && nuevo ? (
-          <div id="nuevo">
-            <EntryForm missionId={mission.id} people={peopleOptions} defaultKind={tipo === "ingreso" ? "ingreso" : "gasto"} />
+        {/* Lectura del plan */}
+        <section className="flex flex-col gap-[18px] rounded-[20px] bg-brand-900 p-5 text-paper sm:p-6" data-plan>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#a9c9bd]">Lectura del plan</span>
+            <span className="max-w-[640px] text-[13px] text-[#cfe3db]">Los ingresos cubren primero los gastos fijos. Lo que sobra compra la lista de materiales y donaciones en orden de prioridad; lo que falta se vuelve la meta de recaudo.</span>
           </div>
-        ) : null}
-
-        {/* Indicadores */}
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <Kpi label="Presupuesto de gastos" value={formatCOP(summary.gastos.proyectado)} sub={`${gastos.length} categorías`} />
-          <Kpi
-            label="Gastos ejecutados"
-            value={formatCOP(summary.gastos.ejecutado)}
-            sub={`${percent(summary.gastos.ejecutado, summary.gastos.proyectado)}% del presupuesto · comprometidos ${formatCOP(summary.gastos.comprometido)}`}
-            tone={summary.gastos.disponible < 0 ? "danger" : "default"}
-          />
-          <Kpi
-            label="Disponible del presupuesto"
-            value={formatCOP(summary.gastos.disponible)}
-            sub={summary.gastos.disponible < 0 ? "Sobreejecución: hay más comprometido y ejecutado que presupuesto." : "Presupuesto − comprometido − ejecutado"}
-            tone={summary.gastos.disponible < 0 ? "danger" : "default"}
-          />
-          <Kpi label="Ingresos proyectados" value={formatCOP(summary.ingresos.proyectado)} sub={`incluye aportes de voluntarios ${formatCOP(aportes.projected)}`} />
-          <Kpi
-            label="Ingresos recibidos"
-            value={formatCOP(summary.ingresos.ejecutado)}
-            sub={`${percent(summary.ingresos.ejecutado, summary.ingresos.proyectado)}% de lo proyectado · comprometidos ${formatCOP(summary.ingresos.comprometido)}`}
-            tone="brand"
-          />
-          <Kpi
-            label="Balance actual"
-            value={formatCOP(summary.balanceActual)}
-            sub={`Proyectado al cierre: ${formatCOP(summary.balanceProyectado)}`}
-            tone={summary.balanceActual < 0 ? "danger" : "brand"}
-          />
-        </section>
-
-        {summary.faltante > 0 ? (
-          <div className="rounded-xl border border-amber-300 bg-warn-soft px-4 py-3 text-sm text-warn">
-            <span className="font-semibold">Falta por recaudar {formatCOP(summary.faltante)}</span> para cubrir el presupuesto de gastos con lo recibido y lo comprometido.
-          </div>
-        ) : null}
-
-        {/* Plan de la misión: ingresos estimados − gastos fijos = saldo para materiales y actividades */}
-        <section className="card-tight sm:p-5" data-plan>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="section-title">Plan de la misión</span>
-            <span className="text-xs text-muted">Ingresos estimados − gastos fijos = saldo para materiales y actividades</span>
-          </div>
-          <div className="mt-3 grid gap-4 lg:grid-cols-3">
-            <PlanBlock
-              title="Ingresos estimados"
-              total={plan.ingresosEstimados}
-              tone="brand"
-              lines={[
-                { label: "Aportes de voluntarios", value: plan.aportesEstimados, note: `Calculado: ${aportes.confirmed - aportes.exempt} confirmados × ${formatCOP(aportes.perPerson)}` },
-                ...ingresos.filter((l) => !l.automatic).map((l) => ({ label: l.label, value: l.proyectado })),
-              ]}
-              footer={{ label: "Recibido hasta hoy", value: summary.ingresos.ejecutado }}
-            />
-            <PlanBlock
-              title="Gastos fijos"
-              total={plan.gastosFijos}
-              lines={plan.fijas.map((l) => ({ label: l.label, value: l.proyectado }))}
-              empty="Sin presupuesto de transporte, alimentación ni alojamiento."
-              footer={{ label: "Comprometido y ejecutado", value: plan.gastosFijosEjecutados }}
-            />
-            <PlanBlock
-              title="Saldo para materiales y actividades"
-              total={plan.saldoDisponible}
-              tone={plan.saldoDisponible < 0 ? "danger" : "default"}
-              lines={plan.asignables.map((l) => ({ label: `Asignado: ${l.label}`, value: l.proyectado }))}
-              empty="Sin presupuesto asignado todavía."
-              footer={plan.sinAsignar >= 0 ? { label: "Sin asignar", value: plan.sinAsignar } : { label: "Sobreasignado", value: -plan.sinAsignar, danger: true }}
-            />
-          </div>
-        </section>
-
-        {/* Presupuesto vs ejecución */}
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-          <div className="card-tight flex flex-col gap-3 sm:p-5">
-            <div className="flex items-baseline justify-between">
-              <span className="section-title">Gastos por categoría</span>
-              <span className="mono text-[13px] text-muted">{formatCOP(summary.gastos.proyectado)}</span>
-            </div>
-            {gastos.length === 0 ? (
-              <p className="text-sm text-muted">Sin gastos registrados. Empieza por el presupuesto: registra cada rubro como gasto proyectado.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Categoría</th>
-                      <th className="text-right">Presupuesto</th>
-                      <th className="text-right">Comprometido</th>
-                      <th className="text-right">Ejecutado</th>
-                      <th className="text-right">Disponible</th>
-                      <th className="w-28">Ejecución</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gastos.map((l) => (
-                      <CategoryRow key={l.category} line={l} base={base} />
-                    ))}
-                  </tbody>
-                </table>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {steps.map((s) => (
+              <div key={s.label} className="flex items-center gap-1.5">
+                <span className="w-[18px] text-center text-[22px] font-medium text-[#7fa99a]">{s.op}</span>
+                <div
+                  className={`flex min-w-[150px] flex-col gap-0.5 rounded-[14px] px-3.5 py-3 ${s.final ? (t.saldoTotal < 0 ? "bg-accent-500 text-ink" : "bg-brand-100 text-ink") : s.danger ? "bg-danger-soft text-danger" : "bg-white/10 text-paper"}`}
+                  data-step={s.label}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.08em] opacity-80">{s.label}</span>
+                  <span className="mono whitespace-nowrap text-[17px] font-semibold">{money(s.value)}</span>
+                  <span className="text-[11px] opacity-75">{s.note}</span>
+                </div>
               </div>
-            )}
+            ))}
           </div>
-          <div className="card-tight flex flex-col gap-3 sm:p-5">
-            <div className="flex items-baseline justify-between">
-              <span className="section-title">Ingresos por fuente</span>
-              <span className="mono text-[13px] text-muted">{formatCOP(summary.ingresos.ejecutado)}</span>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between gap-3 text-xs text-[#cfe3db]">
+              <span>{coverText}</span>
+              <span className="mono">{coverPct}%</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Fuente</th>
-                    <th className="text-right">Proyectado</th>
-                    <th className="text-right">Comprometido</th>
-                    <th className="text-right">Recibido</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ingresos.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-sm text-muted">
-                        Sin ingresos todavía.
-                      </td>
-                    </tr>
-                  ) : null}
-                  {ingresos.map((l) => (
-                    <tr key={l.category}>
-                      <td>
-                        {l.automatic ? (
-                          <Link href={`${base}/voluntarios`} className="font-semibold hover:text-brand-700">
-                            {l.label}
-                          </Link>
-                        ) : (
-                          <Link href={`${base}/finanzas?categoria=${l.category}`} className="font-semibold hover:text-brand-700">
-                            {l.label}
-                          </Link>
-                        )}
-                        {l.automatic ? (
-                          <span className="block text-xs text-muted">
-                            Automático: {aportes.confirmed - aportes.exempt} confirmados × {formatCOP(aportes.perPerson)} · {aportes.paidCount} al día
-                          </span>
-                        ) : (
-                          <span className="block text-xs text-muted">{l.count} movimientos</span>
-                        )}
-                      </td>
-                      <td className="text-right">
-                        <span className="mono">{formatCOP(l.proyectado)}</span>
-                      </td>
-                      <td className="text-right">
-                        <span className="mono">{formatCOP(l.comprometido)}</span>
-                      </td>
-                      <td className="text-right">
-                        <Money amount={l.ejecutado} kind="ingreso" className="font-semibold" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="h-2 overflow-hidden rounded-full bg-white/15">
+              <div className={`h-full rounded-full ${t.incTotal >= t.fijos ? "bg-brand-300" : "bg-accent-500"}`} style={{ width: `${coverPct}%` }} />
             </div>
-            <p className="text-xs text-muted">
-              Los aportes de las personas voluntarias se calculan desde sus fichas (aporte pagado, parcial o exento). No los registres aquí.
-            </p>
           </div>
         </section>
 
-        {/* Movimientos */}
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="section-title">Movimientos</span>
-            <span className="text-xs text-muted">
-              {filtering ? `${rows.length} de ${all.length}` : all.length} · gastos <Money amount={sumAmounts(rows, "gasto")} kind="gasto" /> · ingresos{" "}
-              <Money amount={sumAmounts(rows, "ingreso")} kind="ingreso" />
-            </span>
+        {sp.msg ? (
+          <div className="rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[13px] text-brand-800" role="status" data-flash>
+            {sp.msg}
           </div>
-          <form className="card-tight grid gap-3 sm:grid-cols-[1fr_auto_auto_auto_auto_auto]" method="get">
-            <input name="q" className="input" placeholder="Buscar por concepto, proveedor, referencia o notas" defaultValue={q} />
-            <select name="tipo" className="input sm:w-36" defaultValue={tipo}>
-              <option value="">Gastos e ingresos</option>
-              {FINANCE_KINDS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}s
-                </option>
+        ) : null}
+
+        {/* Tesorería */}
+        <section className="overflow-hidden rounded-2xl border border-line bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-4 py-4 sm:px-[18px]">
+            <div className="flex flex-col">
+              <span className="section-title">Tesorería · saldos por cuenta</span>
+              <span className="text-xs text-muted">Solo cuenta lo recibido y lo pagado. Cada movimiento guarda quién lo hizo.</span>
+            </div>
+            {manage ? (
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Link href={href({ cuentas: "1" })} className="btn-secondary flex-1 sm:flex-none">
+                  Configurar cuentas
+                </Link>
+                <Link href={href({ traslado: "1" })} className="btn-secondary flex-1 sm:flex-none">
+                  ⇄ Traslado entre cuentas
+                </Link>
+              </div>
+            ) : null}
+          </div>
+          {treasury.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-muted sm:px-[18px]">Todavía no hay cuentas de tesorería. {manage ? "Crea una por cada responsable con “Configurar cuentas”." : ""}</p>
+          ) : (
+            <div className="grid gap-px bg-line sm:grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))]">
+              {treasury.map((o) => (
+                <div key={o.owner} className="flex flex-col gap-2.5 bg-white px-4 py-4 sm:px-[18px]" data-treasurer={o.owner}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-accent-600 text-[13px] font-bold text-white">{o.owner.slice(0, 2).toUpperCase()}</span>
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-[15px] font-bold">{o.owner}</span>
+                      <span className="text-xs text-muted">Responsable de tesorería</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="kpi-label">Saldo</span>
+                      <Money amount={o.total} tone="auto" className="text-lg font-semibold" />
+                    </div>
+                  </div>
+                  {o.funds.map((f) => (
+                    <div key={f.id} className="flex flex-col gap-2 rounded-xl border border-line px-3 py-2.5" data-fund-balance={f.label}>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-[13px] font-bold">
+                          {f.type === "banco" ? "Banco" : "Efectivo"} <span className="text-xs font-normal text-faint">· {f.label}</span>
+                        </span>
+                        <Money amount={f.balance} tone={f.balance < 0 ? "out" : "in"} className="text-sm font-semibold" />
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-sand">
+                        <div className="h-full rounded-full bg-brand-600" style={{ width: `${percent(f.balance, f.received)}%` }} />
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-2 text-xs text-muted">
+                        <span>
+                          Ingresado <b className="mono font-semibold text-ink">{money(f.received)}</b>
+                        </span>
+                        <span>
+                          Gastado <b className="mono font-semibold text-ink">{money(f.spent)}</b>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ))}
-            </select>
-            <select name="estado" className="input sm:w-40" defaultValue={estado}>
-              <option value="">Todos los estados</option>
-              {FINANCE_STATUS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select name="categoria" className="input sm:w-52" defaultValue={categoria}>
-              <option value="">Todas las categorías</option>
-              {FINANCE_CATEGORIES.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select name="area" className="input sm:w-44" defaultValue={area}>
-              <option value="">Todas las áreas</option>
-              {AREAS.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.short}
-                </option>
-              ))}
-              <option value={GENERAL_AREA.value}>{GENERAL_AREA.short}</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="btn-secondary">
-                Filtrar
-              </button>
-              {filtering ? (
-                <Link href={`${base}/finanzas`} className="btn-ghost">
-                  Limpiar
+            </div>
+          )}
+          <div className="flex flex-wrap items-baseline gap-x-7 gap-y-2 border-t border-line bg-paper-2 px-4 py-3 text-[13px] sm:px-[18px]">
+            <span className="text-muted">
+              Bancario <b className="mono font-semibold text-ink">{money(t.bank)}</b>
+            </span>
+            <span className="text-muted">
+              Efectivo <b className="mono font-semibold text-ink">{money(t.cash)}</b>
+            </span>
+            <span className="font-extrabold">
+              Disponible total <b className="mono font-semibold">{money(t.bank + t.cash)}</b>
+            </span>
+            {t.reimbPending > 0 ? (
+              <span className="font-semibold text-warn">
+                Reembolsos pendientes <b className="mono">{money(t.reimbPending)}</b>
+              </span>
+            ) : null}
+          </div>
+          <div className="border-t border-line">
+            <div className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted sm:px-[18px]">Últimos movimientos · quién los hizo</div>
+            {model.moves.length === 0 ? <p className="px-4 pb-4 text-sm text-muted sm:px-[18px]">Todavía no hay movimientos de dinero.</p> : null}
+            {model.moves.map((m, i) => (
+              <div key={`${m.type}-${i}`} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-line-soft px-4 py-2 text-[13px] sm:px-[18px]">
+                <span className="mono text-[11px] text-faint">{m.date ? formatShortDate(m.date) : "—"}</span>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Pill tone={m.type === "Ingreso" ? "ok" : m.type === "Gasto" ? "danger" : m.type === "Compra" ? "warn" : "info"}>{m.type}</Pill>
+                    <span className="truncate font-semibold">{m.concept}</span>
+                  </span>
+                  <span className="text-xs text-muted">
+                    {m.fund} · por <b className="text-ink-soft">{m.by ?? "—"}</b>
+                  </span>
+                </div>
+                <Money amount={m.amount} tone={m.type === "Ingreso" ? "in" : m.type === "Traslado" ? "neutral" : "out"} className="text-[13px] font-semibold" />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Ingresos y gastos */}
+        <section className="grid items-start gap-4 xl:grid-cols-2">
+          <div className="flex flex-col overflow-hidden rounded-2xl border border-line bg-white" data-incomes>
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-4 py-4 sm:px-[18px]">
+              <div className="flex flex-col">
+                <span className="section-title">Ingresos</span>
+                <span className="text-xs text-muted">Aportes de voluntarios, grupos y fuentes externas</span>
+              </div>
+              {manage ? (
+                <Link href={href({ nuevo: "ingreso" })} className="btn-primary w-full sm:w-auto">
+                  + Registrar ingreso
                 </Link>
               ) : null}
             </div>
-          </form>
+            <div className="flex flex-wrap gap-1.5 border-b border-line-soft px-4 py-2.5 sm:px-[18px]">
+              {[
+                ["todos", "Todos"],
+                ["voluntarios", "Voluntarios"],
+                ["grupos", "Grupos"],
+                ["externos", "Externos"],
+              ].map(([v, l]) => (
+                <FilterChip key={v} href={href({ ingresos: v === "todos" ? undefined : v })} on={incF === v} label={l} />
+              ))}
+            </div>
+            {showVols ? (
+              <details className="border-b border-line-soft" open={incF === "voluntarios"}>
+                <summary className={`${ROW} cursor-pointer list-none hover:bg-paper-2`}>
+                  <span className={`mono text-sm font-semibold ${AMOUNT}`}>
+                    {money(volTotal)}
+                    {volPend ? " *" : ""}
+                  </span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="font-semibold">Aportes de voluntarios ({vols.length})</span>
+                    <span className="text-xs text-muted">
+                      {volRec} recibidos · {volPend} por recibir · {money(model.perPerson)} por persona
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <Pill tone="muted">Voluntarios</Pill>
+                    <Pill tone={volPend ? "warn" : "ok"}>{volPend ? `${volPend} pendientes` : "Completo"}</Pill>
+                  </div>
+                </summary>
+                <div className="grid gap-1 px-4 pb-3 sm:grid-cols-2 sm:px-[18px]">
+                  {vols.length === 0 ? <p className="text-xs text-muted">Todavía no hay personas confirmadas.</p> : null}
+                  {vols.map((v) => (
+                    <div key={v.registrationId} className="flex items-center justify-between gap-2 rounded-lg bg-paper-2 px-2 py-1.5 text-xs" data-volunteer-contribution={v.name}>
+                      <span className="flex min-w-0 flex-col">
+                        <Link href={`${base}/voluntarios/${v.registrationId}`} className="truncate font-semibold hover:text-brand-700">
+                          {v.name}
+                        </Link>
+                        <span className="text-[11px] text-faint">{v.kind === "recibido" || v.kind === "parcial" ? `${model.fundLabel(v.fundId)}${v.receivedBy ? ` · ${v.receivedBy}` : ""}` : v.kind === "exento" ? "exento" : "pendiente"}</span>
+                      </span>
+                      <span className={`mono whitespace-nowrap ${v.kind === "estimado" || v.kind === "parcial" ? "text-warn" : "text-muted"}`}>
+                        {money(Math.max(v.expected, v.received))}
+                        {v.kind === "estimado" || v.kind === "parcial" ? " *" : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+            {otherIncomes.map((e) => {
+              const status = incomeStatusOf(e);
+              return (
+                <div key={e.id} className={`${ROW} border-b border-line-soft`} data-income={e.concept}>
+                  <span className={`mono text-sm font-semibold ${AMOUNT}`}>
+                    {money(e.amount)}
+                    {status === "estimado" ? " *" : ""}
+                  </span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="font-semibold">{e.concept}</span>
+                    <span className="text-xs text-muted">
+                      {[e.notes, e.entryDate ? formatShortDate(e.entryDate) : null, status === "recibido" ? `→ ${model.fundLabel(e.fundId)}${e.registeredBy ? ` · por ${e.registeredBy}` : ""}` : null].filter(Boolean).join(" · ")}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <Pill tone="muted">{e.category === "donaciones_especie" ? "En especie" : e.source === "grupo" ? "Grupo" : "Externo"}</Pill>
+                    {manage ? (
+                      <form action={toggleIncomeStatusAction.bind(null, mission.id, e.id)}>
+                        <input type="hidden" name="returnTo" value={returnTo} />
+                        <button type="submit" className="cursor-pointer" title={status === "recibido" ? "Volver a estimado" : "Marcar como recibido"}>
+                          <Pill tone={status === "recibido" ? "ok" : "warn"}>{status === "recibido" ? "Recibido" : "Estimado *"}</Pill>
+                        </button>
+                      </form>
+                    ) : (
+                      <Pill tone={status === "recibido" ? "ok" : "warn"}>{status === "recibido" ? "Recibido" : "Estimado *"}</Pill>
+                    )}
+                    {manage ? (
+                      <form action={deleteEntryAction.bind(null, mission.id, e.id)}>
+                        <input type="hidden" name="returnTo" value={returnTo} />
+                        <button type="submit" className="px-1 text-xs text-faint hover:text-danger" title="Eliminar" aria-label={`Eliminar ${e.concept}`}>
+                          ✕
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+            {!showVols && otherIncomes.length === 0 ? <p className="px-4 py-6 text-center text-sm text-faint">Sin ingresos de este tipo todavía.</p> : null}
+            <div className="flex flex-col gap-1 bg-paper-2 px-4 py-3.5 text-[13px] sm:px-[18px]">
+              <div className="flex justify-between">
+                <span className="text-muted">Recibido</span>
+                <span className="mono">{money(t.incRec)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Estimado / prometido *</span>
+                <span className="mono text-warn">{money(t.incEst)}</span>
+              </div>
+              <div className="flex justify-between border-t border-line pt-1 font-extrabold">
+                <span>TOTAL INGRESOS *</span>
+                <span className="mono">{money(t.incTotal)}</span>
+              </div>
+            </div>
+          </div>
 
-          <div className="card-tight overflow-x-auto p-0">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Concepto</th>
-                  <th>Categoría</th>
-                  <th>Área</th>
-                  <th>Estado</th>
-                  <th className="text-right">Valor</th>
-                  <th>Responsable</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-6 text-center text-sm text-muted">
-                      {all.length === 0
-                        ? manage
-                          ? "Todavía no hay movimientos. Registra el presupuesto de la misión con el botón “+ Nuevo movimiento”."
-                          : "Todavía no hay movimientos registrados."
-                        : "Ningún movimiento coincide con el filtro."}
-                    </td>
-                  </tr>
-                ) : null}
-                {rows.map((r) => (
-                  <tr key={r.id} data-entry={r.id} data-concept={r.concept}>
-                    <td className="mono whitespace-nowrap text-xs text-muted">{r.entryDate ? formatShortDate(r.entryDate) : "—"}</td>
-                    <td>
-                      <KindBadge kind={r.kind} />
-                    </td>
-                    <td>
-                      <Link href={`${base}/finanzas/${r.id}`} className="font-semibold hover:text-brand-700">
-                        {r.concept}
-                      </Link>
-                      {r.counterparty || r.reference ? (
-                        <span className="block text-xs text-muted">
-                          {[r.counterparty, r.reference].filter(Boolean).join(" · ")}
+          <div className="flex flex-col overflow-hidden rounded-2xl border border-line bg-white" data-expenses>
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line px-4 py-4 sm:px-[18px]">
+              <div className="flex flex-col">
+                <span className="section-title">Gastos</span>
+                <span className="text-xs text-muted">Fijos primero · clic en el estado para avanzarlo (pendiente → comprometido → pagado)</span>
+              </div>
+              {manage ? (
+                <Link href={href({ nuevo: "gasto" })} className="btn-primary w-full sm:w-auto">
+                  + Agregar gasto
+                </Link>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-1.5 border-b border-line-soft px-4 py-2.5 sm:px-[18px]">
+              <FilterChip href={href({ gastos: undefined })} on={expF === "todas"} label="Todas" />
+              {usedCats.map((c) => (
+                <FilterChip key={c.value} href={href({ gastos: c.value })} on={expF === c.value} label={c.label} />
+              ))}
+            </div>
+            {expenseGroups.length === 0 ? <p className="px-4 py-6 text-center text-sm text-faint">Sin gastos registrados.</p> : null}
+            {expenseGroups.map((g) => (
+              <div key={g.value} className="border-b border-line" data-expense-group={g.value}>
+                <div className="flex items-center justify-between gap-2 bg-paper-2 px-4 py-2.5 sm:px-[18px]">
+                  <span className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.06em]">
+                    <span>{g.label}</span>
+                    <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold normal-case tracking-normal ${g.fixed ? "bg-brand-900 text-paper" : "bg-warn-soft text-warn"}`}>{g.fixed ? "FIJO" : "VARIABLE"}</span>
+                  </span>
+                  <span className="mono text-[13px] font-semibold">{money(g.subtotal)}</span>
+                </div>
+                {g.items.map((i) => (
+                  <div key={i.id} className={`${ROW} border-t border-line-soft`} data-expense={i.concept}>
+                    <span className={`mono text-sm ${AMOUNT}`}>{money(i.amount)}</span>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="font-semibold">{i.concept}</span>
+                      {i.sub ? <span className="text-xs text-muted">{i.sub}</span> : null}
+                      {i.pay ? (
+                        <span className={`text-xs ${i.payPending ? "text-warn" : "text-brand-800"}`}>
+                          {i.pay}
+                          {i.reimbursable && manage ? (
+                            <>
+                              {" · "}
+                              <Link href={href({ reembolso: i.id })} className="font-semibold underline">
+                                Marcar reembolsado
+                              </Link>
+                            </>
+                          ) : null}
                         </span>
                       ) : null}
-                    </td>
-                    <td className="text-sm">{labelOf(FINANCE_CATEGORIES, r.category)}</td>
-                    <td className="text-sm text-muted">{areaLabel(r.area) || "—"}</td>
-                    <td>
-                      <FinanceStatusPill status={r.status} />
-                    </td>
-                    <td className="text-right">
-                      <Money amount={r.amount} kind={r.kind} className="font-semibold" />
-                    </td>
-                    <td className="text-sm text-muted">{r.ownerName ?? "—"}</td>
-                  </tr>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      {i.fromWish ? (
+                        <Pill tone="ok">Comprado</Pill>
+                      ) : manage ? (
+                        <form action={cycleExpenseStatusAction.bind(null, mission.id, i.id)}>
+                          <input type="hidden" name="returnTo" value={returnTo} />
+                          <button type="submit" className="cursor-pointer" title="Avanzar de estado">
+                            <Pill tone={i.status === "pagado" ? "ok" : i.status === "comprometido" ? "warn" : "muted"}>{labelOf(EXPENSE_LABELS, i.status)}</Pill>
+                          </button>
+                        </form>
+                      ) : (
+                        <Pill tone={i.status === "pagado" ? "ok" : i.status === "comprometido" ? "warn" : "muted"}>{labelOf(EXPENSE_LABELS, i.status)}</Pill>
+                      )}
+                      {manage ? (
+                        <form action={(i.fromWish ? returnWishItemAction : deleteEntryAction).bind(null, mission.id, i.id)}>
+                          <input type="hidden" name="returnTo" value={returnTo} />
+                          <button type="submit" className="px-1 text-xs text-faint hover:text-danger" title={i.fromWish ? "Devolver a la lista" : "Eliminar"} aria-label={`${i.fromWish ? "Devolver a la lista" : "Eliminar"} ${i.concept}`}>
+                            {i.fromWish ? "↺" : "✕"}
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ))}
+            <div className="flex flex-col gap-1 bg-paper-2 px-4 py-3.5 text-[13px] sm:px-[18px]">
+              <div className="flex justify-between font-extrabold">
+                <span>TOTAL GASTOS FIJOS</span>
+                <span className="mono">{money(t.fijos)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Fijos pagados hasta hoy</span>
+                <span className="mono">{money(t.fijosPagados)}</span>
+              </div>
+              <div className="mt-0.5 flex justify-between border-t border-dashed border-line pt-1.5">
+                <span className="text-muted">Total pagado (fijos + variables) · por origen</span>
+                <span className="mono">{money(t.pagadoTotal)}</span>
+              </div>
+              {payBreakdown.map((p) => (
+                <div key={p.label} className="flex justify-between gap-2 pl-3">
+                  <span className="text-faint">{p.label}</span>
+                  <span className={`mono whitespace-nowrap ${p.warn ? "text-warn" : ""}`}>{money(p.value)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between border-t border-line pt-1 font-extrabold">
+                <span>PRESUPUESTO DISPONIBLE</span>
+                <Money amount={t.disponible} tone="auto" />
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">Actividades y compras ya ejecutadas</span>
+                <span className="mono">{money(t.variables)}</span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span>Saldo para compras</span>
+                <Money amount={t.budgetWish} tone="auto" />
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-muted">
-            <span className="font-semibold">Cómo se lee:</span> <em>proyectado</em> es el presupuesto o la proyección; <em>comprometido</em>, un acuerdo en firme sin
-            movimiento de dinero; <em>ejecutado</em>, dinero ya pagado o recibido. El disponible de cada categoría es su presupuesto menos lo comprometido y lo ejecutado.
-          </p>
+        </section>
+
+        {/* Lista de compras */}
+        <section className="overflow-hidden rounded-2xl border border-line bg-white" data-wish-list>
+          <div className="flex flex-wrap items-center justify-between gap-3.5 border-b border-line px-4 py-4 sm:px-[18px]">
+            <div className="flex flex-col">
+              <span className="section-title">Lista de compras · materiales y donaciones</span>
+              <span className="text-xs text-muted">Ordena por prioridad. Se compra en orden mientras haya saldo; lo que no alcanza es la meta de recaudo.</span>
+            </div>
+            <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-3 sm:w-auto">
+              <div className="flex flex-col">
+                <span className="kpi-label">Pendiente</span>
+                <span className="mono text-base font-semibold">{money(t.wishPending)}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="kpi-label text-brand-800">Cubierto con saldo</span>
+                <span className="mono text-base font-semibold text-brand-800">{money(t.coveredSum)}</span>
+              </div>
+              <div className="flex flex-col rounded-[10px] bg-warn-soft px-3 py-1.5">
+                <span className="kpi-label text-warn">Falta por recaudar</span>
+                <span className="mono text-base font-semibold text-warn" data-meta>
+                  {money(t.meta)}
+                </span>
+              </div>
+              {manage ? (
+                <Link href={href({ nuevo: "lista" })} className="btn-primary w-full sm:w-auto">
+                  + Agregar a la lista
+                </Link>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 border-b border-line-soft px-4 py-3 sm:px-[18px]">
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-sand">
+              <div className="h-full bg-brand-600" style={{ width: `${coveredW}%` }} />
+              <div className="h-full bg-accent-500" style={{ width: `${100 - coveredW}%` }} />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FilterChip href={href({ lista: undefined })} on={wishF === "todas"} label="Todas" />
+              {WISH_CATEGORIES.map((c) => (
+                <FilterChip key={c.value} href={href({ lista: c.value })} on={wishF === c.value} label={c.label} dot={c.color} />
+              ))}
+              <span className="ml-auto text-xs text-muted">
+                Saldo para compras: <Money amount={t.budgetWish} tone="auto" className="font-semibold" />
+              </span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
+              <div className="grid grid-cols-[40px_64px_minmax(0,2fr)_130px_120px_130px_170px] border-b border-line bg-paper-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted sm:px-[18px]">
+                <span>#</span>
+                <span />
+                <span>Ítem</span>
+                <span>Categoría</span>
+                <span className="text-right">Costo est.</span>
+                <span className="pl-3">Estado</span>
+                <span />
+              </div>
+              {wishRows.length === 0 ? <p className="px-4 py-6 text-center text-sm text-faint">Nada en la lista para esta categoría.</p> : null}
+              {wishRows.map(({ w, n }) => {
+                const done = w.status === "comprado";
+                const cv = model.covered.has(w.id);
+                const cat = wishCategoryInfo(w.category);
+                return (
+                  <div key={w.id} className={`grid grid-cols-[40px_64px_minmax(0,2fr)_130px_120px_130px_170px] items-center border-b border-line-soft px-4 py-2.5 text-sm sm:px-[18px] ${done ? "bg-paper-2" : cv ? "bg-white" : "bg-warn-soft/30"}`} data-wish={w.name}>
+                    <span className="mono text-xs text-faint">{n}</span>
+                    <div className="flex gap-0.5">
+                      {manage && !done ? (
+                        <>
+                          <form action={moveWishItemAction.bind(null, mission.id, w.id)}>
+                            <input type="hidden" name="returnTo" value={returnTo} />
+                            <input type="hidden" name="direction" value="up" />
+                            <button type="submit" className="flex h-6 w-6 items-center justify-center rounded-md border border-line bg-white text-[10px] text-muted hover:bg-paper-2" title="Subir" aria-label={`Subir ${w.name}`}>
+                              ▲
+                            </button>
+                          </form>
+                          <form action={moveWishItemAction.bind(null, mission.id, w.id)}>
+                            <input type="hidden" name="returnTo" value={returnTo} />
+                            <input type="hidden" name="direction" value="down" />
+                            <button type="submit" className="flex h-6 w-6 items-center justify-center rounded-md border border-line bg-white text-[10px] text-muted hover:bg-paper-2" title="Bajar" aria-label={`Bajar ${w.name}`}>
+                              ▼
+                            </button>
+                          </form>
+                        </>
+                      ) : null}
+                    </div>
+                    <div className="flex min-w-0 flex-col">
+                      <span className={`font-semibold ${done ? "text-faint line-through" : ""}`}>{w.name}</span>
+                      <span className="text-xs text-muted">{w.detail}</span>
+                    </div>
+                    <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: cat.color }}>
+                      <span className="h-[7px] w-[7px] rounded-full" style={{ background: cat.color }} />
+                      {cat.label}
+                    </span>
+                    <span className="mono text-right">{money(w.total)}</span>
+                    <span className="pl-3">
+                      <Pill tone={done || cv ? "ok" : "warn"}>{done ? "Comprado" : cv ? "Cubierto con saldo" : "Falta saldo"}</Pill>
+                    </span>
+                    <div className="flex justify-end gap-1.5">
+                      {done ? (
+                        <span className="rounded-lg bg-line-soft px-2.5 py-1.5 text-xs font-bold text-muted">Comprado ✓</span>
+                      ) : cv && manage ? (
+                        <Link href={href({ comprar: w.id })} className="rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-brand-700">
+                          Comprar
+                        </Link>
+                      ) : (
+                        <span className="rounded-lg bg-line-soft px-2.5 py-1.5 text-xs font-bold text-faint">{cv ? "Cubierto" : "Sin saldo"}</span>
+                      )}
+                      {manage ? (
+                        <form action={(done ? returnWishItemAction : deleteWishItemAction).bind(null, mission.id, w.id)}>
+                          <input type="hidden" name="returnTo" value={returnTo} />
+                          <button type="submit" className="px-1 py-1.5 text-xs text-faint hover:text-danger" title={done ? "Devolver a la lista" : "Quitar de la lista"} aria-label={`${done ? "Devolver a la lista" : "Quitar"} ${w.name}`}>
+                            {done ? "↺" : "✕"}
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1 bg-paper-2 px-4 py-3.5 text-[13px] sm:px-[18px]">
+            <div className="flex justify-between">
+              <span className="text-muted">Ya comprado (aparece en Gastos · Materiales)</span>
+              <span className="mono">{money(t.bought)}</span>
+            </div>
+            <div className="flex justify-between font-extrabold">
+              <span>COSTO TOTAL LISTA PENDIENTE</span>
+              <span className="mono">{money(t.wishPending)}</span>
+            </div>
+            <div className="flex justify-between border-t border-line pt-1 font-extrabold">
+              <span>SALDO TOTAL</span>
+              <Money amount={t.saldoTotal} tone={t.saldoTotal < 0 ? "out" : "in"} />
+            </div>
+            <p className="pt-1 text-xs text-muted">{financeSummaryText(t, money)}</p>
+          </div>
         </section>
       </PageBody>
+
+      {manage && sp.nuevo === "ingreso" ? (
+        <Modal kicker="Ingresos" title="Registrar ingreso" closeHref={closeHref}>
+          <IncomeForm {...common} volunteers={volunteerOptions} groups={groups} perPerson={model.perPerson} />
+        </Modal>
+      ) : null}
+      {manage && sp.nuevo === "gasto" ? (
+        <Modal kicker="Gastos" title="Agregar gasto" closeHref={closeHref}>
+          <ExpenseForm {...common} />
+        </Modal>
+      ) : null}
+      {manage && sp.nuevo === "lista" ? (
+        <Modal kicker="Lista de compras" title="Agregar ítem a la lista" closeHref={closeHref}>
+          <WishForm missionId={mission.id} returnTo={returnTo} closeHref={closeHref} />
+        </Modal>
+      ) : null}
+      {manage && buyItem ? (
+        <Modal kicker="Lista de compras" title="Registrar compra" closeHref={closeHref}>
+          <BuyForm {...common} item={{ id: buyItem.id, name: buyItem.name, total: buyItem.total }} />
+        </Modal>
+      ) : null}
+      {manage && sp.traslado ? (
+        <Modal kicker="Tesorería" title="Traslado entre cuentas" closeHref={closeHref}>
+          <TransferForm {...common} />
+        </Modal>
+      ) : null}
+      {manage && sp.cuentas ? (
+        <Modal kicker="Tesorería" title="Cuentas de tesorería" closeHref={closeHref}>
+          <FundsPanel missionId={mission.id} returnTo={href({ cuentas: "1" })} closeHref={closeHref} funds={fundOptions} people={people} />
+        </Modal>
+      ) : null}
+      {manage && reimburseEntry ? (
+        <Modal kicker="Gastos" title="Marcar reembolsado" closeHref={closeHref}>
+          <ReimburseForm missionId={mission.id} returnTo={returnTo} closeHref={closeHref} funds={fundOptions} entry={{ id: reimburseEntry.id, concept: reimburseEntry.concept, amount: reimburseEntry.amount, payPerson: reimburseEntry.payPerson }} />
+        </Modal>
+      ) : null}
     </>
   );
 }
 
-function CategoryRow({ line, base }: { line: CategoryLine; base: string }) {
-  const used = line.comprometido + line.ejecutado;
-  const pct = line.proyectado > 0 ? Math.min(100, Math.round((used / line.proyectado) * 100)) : used > 0 ? 100 : 0;
-  const over = line.disponible < 0;
-  return (
-    <tr>
-      <td>
-        <Link href={`${base}/finanzas?categoria=${line.category}`} className="font-semibold hover:text-brand-700">
-          {line.label}
-        </Link>
-        {isFixedExpenseCategory(line.category) ? <span className="badge ml-2 bg-brand-100 text-brand-800">fijo</span> : null}
-        <span className="block text-xs text-muted">{line.count} movimientos</span>
-      </td>
-      <td className="text-right">
-        <span className="mono">{formatCOP(line.proyectado)}</span>
-      </td>
-      <td className="text-right">
-        <span className="mono">{formatCOP(line.comprometido)}</span>
-      </td>
-      <td className="text-right">
-        <Money amount={line.ejecutado} kind="gasto" className="font-semibold" />
-      </td>
-      <td className="text-right">
-        <span className={`mono ${over ? "font-semibold text-danger" : ""}`}>{formatCOP(line.disponible)}</span>
-      </td>
-      <td>
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-sand">
-            <div className={`h-full rounded-full ${over ? "bg-danger" : "bg-brand-500"}`} style={{ width: `${pct}%` }} />
-          </div>
-          <span className="mono w-9 text-right text-xs text-muted">{pct}%</span>
-        </div>
-      </td>
-    </tr>
-  );
-}
+const EXPENSE_LABELS = [
+  { value: "pendiente", label: "Pendiente" },
+  { value: "comprometido", label: "Comprometido" },
+  { value: "pagado", label: "Pagado" },
+  { value: "comprado", label: "Comprado" },
+] as const;
 
-function PlanBlock({
-  title,
-  total,
-  tone = "default",
-  lines,
-  footer,
-  empty,
-}: {
-  title: string;
-  total: number;
-  tone?: "default" | "brand" | "danger";
-  lines: { label: string; value: number; note?: string }[];
-  footer?: { label: string; value: number; danger?: boolean };
-  empty?: string;
-}) {
-  const text = tone === "brand" ? "text-brand-800" : tone === "danger" ? "text-danger" : "text-ink";
-  return (
-    <div className="rounded-2xl border border-line bg-white p-4">
-      <p className="kpi-label">{title}</p>
-      <p className={`mono mt-1 text-2xl font-extrabold tracking-tight ${text}`}>{formatCOP(total)}</p>
-      <ul className="mt-3 space-y-1 text-sm">
-        {lines.length === 0 && empty ? <li className="text-muted">{empty}</li> : null}
-        {lines.map((l) => (
-          <li key={l.label} className="flex items-baseline justify-between gap-3">
-            <span>
-              {l.label}
-              {l.note ? <span className="block text-xs text-muted">{l.note}</span> : null}
-            </span>
-            <span className="mono whitespace-nowrap">{formatCOP(l.value)}</span>
-          </li>
-        ))}
-      </ul>
-      {footer ? (
-        <p className={`mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-2 text-sm font-semibold ${footer.danger ? "text-danger" : ""}`}>
-          <span>{footer.label}</span>
-          <span className="mono whitespace-nowrap">{formatCOP(footer.value)}</span>
-        </p>
-      ) : null}
-    </div>
-  );
-}
+// El tipo del modelo se usa solo para la inferencia de los helpers de arriba.
+export type { FinanceModel };

@@ -2,7 +2,7 @@ import { createClient, type Client } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import { MIGRATIONS } from "./migrations";
-import { ensureBootstrapAdmin, seedFinancePlanIfEmpty, seedIfEmpty, seedTasksIfEmpty } from "./seed";
+import { ensureBootstrapAdmin, seedFinanceFundsIfEmpty, seedFinancePlanIfEmpty, seedIfEmpty, seedTasksIfEmpty } from "./seed";
 
 export type Db = LibSQLDatabase<typeof schema>;
 
@@ -134,6 +134,7 @@ export function getDb(): Promise<Db> {
     await ensureBootstrapAdmin(db);
     await seedTasksIfEmpty(db);
     await seedFinancePlanIfEmpty(db);
+    await seedFinanceFundsIfEmpty(db);
     cache.client = client;
     cache.db = db;
     return db;

@@ -1,6 +1,6 @@
 import { and, count, eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { activityLog, appSettings, financeEntries, missions, organizations, tasks, users } from "./schema";
+import { activityLog, appSettings, financeEntries, financeFunds, missions, organizations, tasks, users, wishItems } from "./schema";
 import { nowIso } from "../format";
 import { DEV_ADMIN_EMAIL, DEV_ADMIN_PASSWORD, hashPassword } from "../password";
 import { KAIROS_ETAPA2_DECLARATIONS, KAIROS_ETAPA2_TERMS_MARKDOWN, KAIROS_ETAPA2_TERMS_VERSION } from "../terms/kairos-etapa2";
@@ -245,8 +245,20 @@ const SEED_FINANCE_PLAN: { kind: "gasto" | "ingreso"; category: string; area?: s
   { kind: "gasto", category: "transporte", area: "transporte", concept: "Gasolina de las lanchas", amount: 3_230_000 },
   { kind: "gasto", category: "transporte", area: "transporte", concept: "Motoristas", amount: 1_200_000 },
   { kind: "gasto", category: "alimentacion", area: "alimentacion", concept: "Alimentación y abastecimientos", amount: 3_000_000 },
-  { kind: "gasto", category: "materiales", concept: "Materiales (presupuesto asignado)", amount: 6_000_000 },
-  { kind: "gasto", category: "actividades", concept: "Tienda y actividades (presupuesto asignado)", amount: 230_000 },
+  { kind: "gasto", category: "actividades", concept: "Tienda y actividades", amount: 230_000 },
+];
+
+/** Lista de compras inicial: el presupuesto asignado a materiales, como primer ítem. */
+const SEED_WISH: { name: string; detail: string; category: string; total: number }[] = [
+  { name: "Materiales de construcción", detail: "Presupuesto asignado del plan inicial", category: "construccion", total: 6_000_000 },
+];
+
+/** Cuentas de tesorería iniciales: Miguel y Jhen, cada uno con banco y efectivo. */
+const SEED_FUNDS: { owner: string; type: "banco" | "efectivo"; label: string }[] = [
+  { owner: "Miguel", type: "banco", label: "Cuenta Miguel" },
+  { owner: "Miguel", type: "efectivo", label: "Efectivo Miguel" },
+  { owner: "Jhen", type: "banco", label: "Cuenta Jhen" },
+  { owner: "Jhen", type: "efectivo", label: "Efectivo Jhen" },
 ];
 
 /**
@@ -282,14 +294,52 @@ export async function seedFinancePlanIfEmpty(db: Db) {
         createdBy: "sistema",
       })),
     );
+    await db.insert(wishItems).values(
+      SEED_WISH.map((w, i) => ({
+        id: crypto.randomUUID(),
+        missionId: mission.id,
+        name: w.name,
+        detail: w.detail,
+        category: w.category,
+        qty: 1,
+        unitCost: w.total,
+        total: w.total,
+        position: i,
+        status: "pendiente",
+        notes: "Plan inicial de la misión (lista de Financiero, octubre de 2026).",
+        createdBy: "sistema",
+      })),
+    );
     await db.insert(activityLog).values({
       id: crypto.randomUUID(),
       entityType: "finance",
       entityId: mission.id,
       action: "plan_inicial_cargado",
-      detail: `${SEED_FINANCE_PLAN.length} movimientos proyectados del plan inicial de Financiero`,
+      detail: `${SEED_FINANCE_PLAN.length} movimientos y ${SEED_WISH.length} ítem de la lista de compras del plan inicial de Financiero`,
       actor: "sistema",
     });
+  }
+  await db
+    .insert(appSettings)
+    .values({ key, value: now, updatedAt: now })
+    .onConflictDoUpdate({ target: appSettings.key, set: { value: now, updatedAt: now } });
+}
+
+const FINANCE_FUNDS_SETTING = "finance_funds_seeded";
+
+/** Cuentas de tesorería iniciales de la misión semilla, una sola vez y solo si no hay ninguna. */
+export async function seedFinanceFundsIfEmpty(db: Db) {
+  const mission = (await db.select().from(missions).where(eq(missions.code, SEED_MISSION_CODE)).limit(1))[0];
+  if (!mission) return;
+  const key = `${FINANCE_FUNDS_SETTING}:${mission.id}`;
+  const done = (await db.select().from(appSettings).where(eq(appSettings.key, key)).limit(1))[0];
+  if (done) return;
+  const now = nowIso();
+  const [{ value: existing }] = await db.select({ value: count() }).from(financeFunds).where(eq(financeFunds.missionId, mission.id));
+  if (existing === 0) {
+    await db.insert(financeFunds).values(
+      SEED_FUNDS.map((f, i) => ({ id: crypto.randomUUID(), missionId: mission.id, ownerName: f.owner, type: f.type, label: f.label, active: true, position: i, createdBy: "sistema" })),
+    );
   }
   await db
     .insert(appSettings)

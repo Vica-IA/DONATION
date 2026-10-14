@@ -131,7 +131,10 @@ export const FINANCE_KINDS = [
   { value: "ingreso", label: "Ingreso" },
 ] as const satisfies readonly Option[];
 
-/** Estado de un movimiento: de la proyección a la ejecución. */
+/**
+ * Estado almacenado de un movimiento. En pantalla se lee según el tipo:
+ * gasto → pendiente / comprometido / pagado; ingreso → estimado / prometido / recibido.
+ */
 export const FINANCE_STATUS = [
   { value: "proyectado", label: "Proyectado" },
   { value: "comprometido", label: "Comprometido" },
@@ -141,26 +144,85 @@ export const FINANCE_STATUS = [
 export type FinanceKind = (typeof FINANCE_KINDS)[number]["value"];
 export type FinanceStatus = (typeof FINANCE_STATUS)[number]["value"];
 
-export const FINANCE_STATUS_HELP: Record<FinanceStatus, string> = {
-  proyectado: "Presupuesto o proyección: todavía no hay compromiso.",
-  comprometido: "Acuerdo en firme (orden de compra, promesa de donación) sin movimiento de dinero.",
-  ejecutado: "El dinero ya se pagó o ya se recibió.",
-};
+/** Estado de un gasto tal como lo ve Financiero (se guarda como FINANCE_STATUS). */
+export const EXPENSE_STATUS = [
+  { value: "pendiente", label: "Pendiente", stored: "proyectado" },
+  { value: "comprometido", label: "Comprometido", stored: "comprometido" },
+  { value: "pagado", label: "Pagado", stored: "ejecutado" },
+] as const satisfies readonly (Option & { stored: FinanceStatus })[];
+
+/** Estado de un ingreso: recibido (ya está en una cuenta) o estimado / prometido. */
+export const INCOME_STATUS = [
+  { value: "recibido", label: "Recibido", stored: "ejecutado" },
+  { value: "estimado", label: "Estimado / prometido", stored: "proyectado" },
+] as const satisfies readonly (Option & { stored: FinanceStatus })[];
+
+export type ExpenseStatus = (typeof EXPENSE_STATUS)[number]["value"];
+export type IncomeStatus = (typeof INCOME_STATUS)[number]["value"];
+
+/** Fuente de un ingreso. Los aportes de voluntarios se registran en la ficha de cada persona. */
+export const INCOME_SOURCES = [
+  { value: "voluntario", label: "Voluntario" },
+  { value: "grupo", label: "Grupo" },
+  { value: "externo", label: "Fuente externa" },
+] as const satisfies readonly Option[];
+
+export type IncomeSource = (typeof INCOME_SOURCES)[number]["value"];
+
+/** Fijo: debe quedar cubierto por los ingresos antes de comprar materiales. Variable: sale del saldo para compras. */
+export const BUDGET_KINDS = [
+  { value: "fijo", label: "Fijo" },
+  { value: "variable", label: "Variable" },
+] as const satisfies readonly Option[];
+
+export type BudgetKind = (typeof BUDGET_KINDS)[number]["value"];
+
+/** Desde dónde se pagó un gasto. */
+export const PAY_KINDS = [
+  { value: "fund", label: "Cuenta o efectivo" },
+  { value: "person", label: "Lo adelantó otra persona" },
+] as const satisfies readonly Option[];
+
+export type PayKind = (typeof PAY_KINDS)[number]["value"];
+
+/** Tipo de cuenta de tesorería. */
+export const FUND_TYPES = [
+  { value: "banco", label: "Banco" },
+  { value: "efectivo", label: "Efectivo" },
+] as const satisfies readonly Option[];
+
+export type FundType = (typeof FUND_TYPES)[number]["value"];
+
+/** Categorías de la lista de compras. */
+export const WISH_CATEGORIES = [
+  { value: "construccion", label: "Construcción", color: "#157a5e" },
+  { value: "donaciones", label: "Donaciones", color: "#c4830f" },
+  { value: "recreativos", label: "Recreativos", color: "#b4506f" },
+  { value: "herramientas", label: "Herramientas", color: "#2f6fa3" },
+] as const satisfies readonly (Option & { color: string })[];
+
+export type WishCategory = (typeof WISH_CATEGORIES)[number]["value"];
+
+export const WISH_STATUS = [
+  { value: "pendiente", label: "Pendiente" },
+  { value: "comprado", label: "Comprado" },
+] as const satisfies readonly Option[];
 
 /**
- * Categorías de gastos e ingresos. `kind` fija a qué tipo pertenece cada una.
+ * Categorías de gastos e ingresos. `kind` fija a qué tipo pertenece cada una;
+ * `fijo` marca los gastos que se cubren primero; `subs` son los tipos sugeridos.
  * Los aportes de las personas voluntarias no se registran aquí: se calculan
  * solos a partir del estado del aporte en cada ficha.
  */
 export const FINANCE_CATEGORIES = [
-  { value: "transporte", label: "Transporte y fletes", kind: "gasto", fijo: true },
-  { value: "alimentacion", label: "Alimentación y agua", kind: "gasto", fijo: true },
+  { value: "transporte", label: "Transporte", kind: "gasto", fijo: true, subs: ["Bus", "Camión", "Lancha", "Motoristas", "Gasolina", "Otro"] },
+  { value: "alimentacion", label: "Alimentación y abastecimiento", kind: "gasto", fijo: true },
   { value: "alojamiento", label: "Alojamiento", kind: "gasto", fijo: true },
-  { value: "materiales", label: "Materiales de construcción", kind: "gasto" },
+  { value: "salud", label: "Seguros, salud y botiquín", kind: "gasto", fijo: true },
+  { value: "materiales", label: "Materiales", kind: "gasto", subs: ["Construcción", "Donaciones", "Recreativos", "Herramientas"] },
   { value: "herramientas", label: "Herramientas y equipos", kind: "gasto" },
-  { value: "salud", label: "Salud, seguros y botiquín", kind: "gasto" },
+  { value: "actividades", label: "Actividades y tienda", kind: "gasto" },
   { value: "comunicaciones", label: "Comunicaciones y energía", kind: "gasto" },
-  { value: "actividades", label: "Actividades con la comunidad", kind: "gasto" },
   { value: "administrativo", label: "Administrativo y bancario", kind: "gasto" },
   { value: "imprevistos", label: "Imprevistos", kind: "gasto" },
   { value: "otros_gastos", label: "Otros gastos", kind: "gasto" },
@@ -170,7 +232,7 @@ export const FINANCE_CATEGORIES = [
   { value: "recaudacion", label: "Eventos de recaudación", kind: "ingreso" },
   { value: "aportes_extra", label: "Aportes adicionales de voluntarios", kind: "ingreso" },
   { value: "otros_ingresos", label: "Otros ingresos", kind: "ingreso" },
-] as const satisfies readonly (Option & { kind: FinanceKind; fijo?: boolean })[];
+] as const satisfies readonly (Option & { kind: FinanceKind; fijo?: boolean; subs?: readonly string[] })[];
 
 export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number]["value"];
 
@@ -182,26 +244,17 @@ export function financeCategoryKind(category: string): FinanceKind | null {
   return FINANCE_CATEGORIES.find((c) => c.value === category)?.kind ?? null;
 }
 
-/** Gasto fijo de la logística (transporte, alimentación, alojamiento): se cubre primero; el saldo del ingreso se asigna a materiales y actividades. */
+/** Gasto fijo de la logística (transporte, alimentación, alojamiento, seguros): se cubre primero. */
 export function isFixedExpenseCategory(category: string): boolean {
   const c = FINANCE_CATEGORIES.find((x) => x.value === category) as { fijo?: boolean } | undefined;
   return c?.fijo === true;
 }
 
-/** Tipo de donación que recibe la misión. En especie se registra con su valor estimado. */
-export const DONATION_TYPES = [
-  { value: "dinero", label: "Dinero" },
-  { value: "especie", label: "En especie" },
-] as const satisfies readonly Option[];
-
-/** Estado de una donación; se traduce al estado del movimiento (recibida = ejecutado, prometida = comprometido). */
-export const DONATION_STATUS = [
-  { value: "recibida", label: "Recibida" },
-  { value: "prometida", label: "Prometida" },
-] as const satisfies readonly Option[];
-
-export type DonationType = (typeof DONATION_TYPES)[number]["value"];
-export type DonationStatus = (typeof DONATION_STATUS)[number]["value"];
+/** Tipos sugeridos dentro de una categoría de gasto (vacío si no tiene). */
+export function expenseSubtypes(category: string): readonly string[] {
+  const c = FINANCE_CATEGORIES.find((x) => x.value === category) as { subs?: readonly string[] } | undefined;
+  return c?.subs ?? [];
+}
 
 export const MISSION_STATUS = [
   { value: "planificacion", label: "En planificación" },

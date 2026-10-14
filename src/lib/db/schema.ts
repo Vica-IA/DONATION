@@ -117,6 +117,10 @@ export const missionRegistrations = sqliteTable(
     paymentNotes: text("payment_notes"),
     /** Cuadrilla a la que pertenece durante la misión (tabla squads). */
     squadId: text("squad_id"),
+    /** Tesorería: cuenta a la que llegó el aporte, quién lo recibió y cuándo. */
+    paymentFundId: text("payment_fund_id"),
+    paymentReceivedBy: text("payment_received_by"),
+    paymentDate: text("payment_date"), // YYYY-MM-DD
     ...timestamps,
   },
   (t) => [
@@ -236,10 +240,91 @@ export const financeEntries = sqliteTable(
     reference: text("reference"), // factura, recibo, comprobante
     ownerUserId: text("owner_user_id").references(() => users.id),
     notes: text("notes"),
+    /** Ingresos: 'grupo' | 'externo' (los aportes de voluntarios viven en la inscripción). */
+    source: text("source"),
+    /** Cuenta a la que llegó (ingreso recibido) o desde la que se pagó (gasto pagado por cuenta). */
+    fundId: text("fund_id"),
+    /** Gastos pagados: 'fund' (cuenta o efectivo) | 'person' (lo adelantó alguien → reembolso pendiente). */
+    payKind: text("pay_kind"),
+    payPerson: text("pay_person"),
+    reimbursedFundId: text("reimbursed_fund_id"),
+    reimbursedAt: text("reimbursed_at"), // YYYY-MM-DD
+    /** Quién registró o realizó el movimiento (nombre). */
+    registeredBy: text("registered_by"),
+    /** Tipo dentro de la categoría (Bus, Camión, Lancha…). */
+    sub: text("sub"),
+    /** 'fijo' | 'variable'; si es null se toma del catálogo de la categoría. */
+    budgetKind: text("budget_kind"),
     createdBy: text("created_by"),
     ...timestamps,
   },
   (t) => [index("finance_mission_idx").on(t.missionId, t.kind, t.status), index("finance_category_idx").on(t.missionId, t.category)],
+);
+
+/** Tesorería: cuentas (banco o efectivo) de cada responsable; los saldos se calculan desde los movimientos. */
+export const financeFunds = sqliteTable(
+  "finance_funds",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    ownerName: text("owner_name").notNull(),
+    type: text("type").notNull(), // FUND_TYPES
+    label: text("label").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("finance_funds_mission_idx").on(t.missionId, t.position)],
+);
+
+/** Traslados entre cuentas (p. ej. retirar efectivo del banco). No cambian el total disponible. */
+export const financeTransfers = sqliteTable(
+  "finance_transfers",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    fromFundId: text("from_fund_id").notNull(),
+    toFundId: text("to_fund_id").notNull(),
+    amount: integer("amount").notNull(),
+    entryDate: text("entry_date"), // YYYY-MM-DD
+    performedBy: text("performed_by"),
+    note: text("note"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("finance_transfers_mission_idx").on(t.missionId, t.entryDate)],
+);
+
+/** Lista de compras priorizada: se compra en orden mientras haya saldo; lo que no alcanza es la meta de recaudo. */
+export const wishItems = sqliteTable(
+  "wish_items",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    name: text("name").notNull(),
+    detail: text("detail"),
+    category: text("category").notNull(), // WISH_CATEGORIES
+    qty: integer("qty").notNull().default(1),
+    unitCost: integer("unit_cost").notNull(),
+    total: integer("total").notNull(),
+    position: integer("position").notNull().default(0),
+    status: text("status").notNull().default("pendiente"), // WISH_STATUS
+    fundId: text("fund_id"),
+    boughtBy: text("bought_by"),
+    reference: text("reference"),
+    boughtAt: text("bought_at"), // YYYY-MM-DD
+    notes: text("notes"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("wish_items_mission_idx").on(t.missionId, t.status, t.position)],
 );
 
 /** Programa de la misión: actividades por día y hora (visibles en la página pública). */
@@ -316,6 +401,9 @@ export type Volunteer = typeof volunteers.$inferSelect;
 export type MissionRegistration = typeof missionRegistrations.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
 export type FinanceEntry = typeof financeEntries.$inferSelect;
+export type FinanceFund = typeof financeFunds.$inferSelect;
+export type FinanceTransfer = typeof financeTransfers.$inferSelect;
+export type WishItem = typeof wishItems.$inferSelect;
 export type PasswordReset = typeof passwordResets.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;

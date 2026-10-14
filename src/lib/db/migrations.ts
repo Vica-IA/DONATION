@@ -275,4 +275,82 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `ALTER TABLE mission_registrations ADD COLUMN squad_id TEXT`,
     ],
   },
+  {
+    id: "0011_finance_v2",
+    statements: [
+      // Tesorería: cuentas (banco o efectivo) por responsable.
+      `CREATE TABLE IF NOT EXISTS finance_funds (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        owner_name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        label TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS finance_funds_mission_idx ON finance_funds (mission_id, position)`,
+      // Traslados entre cuentas (no cambian el total disponible).
+      `CREATE TABLE IF NOT EXISTS finance_transfers (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        from_fund_id TEXT NOT NULL,
+        to_fund_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        entry_date TEXT,
+        performed_by TEXT,
+        note TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS finance_transfers_mission_idx ON finance_transfers (mission_id, entry_date)`,
+      // Lista de compras priorizada (materiales y donaciones por comprar).
+      `CREATE TABLE IF NOT EXISTS wish_items (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        name TEXT NOT NULL,
+        detail TEXT,
+        category TEXT NOT NULL,
+        qty INTEGER NOT NULL DEFAULT 1,
+        unit_cost INTEGER NOT NULL,
+        total INTEGER NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pendiente',
+        fund_id TEXT,
+        bought_by TEXT,
+        reference TEXT,
+        bought_at TEXT,
+        notes TEXT,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS wish_items_mission_idx ON wish_items (mission_id, status, position)`,
+      // Movimientos: fuente del ingreso, cuenta, origen del pago, reembolso, quién lo registró, tipo y fijo/variable.
+      `ALTER TABLE finance_entries ADD COLUMN source TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN fund_id TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN pay_kind TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN pay_person TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN reimbursed_fund_id TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN reimbursed_at TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN registered_by TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN sub TEXT`,
+      `ALTER TABLE finance_entries ADD COLUMN budget_kind TEXT`,
+      // Aporte de cada persona: a qué cuenta llegó, quién lo recibió y cuándo.
+      `ALTER TABLE mission_registrations ADD COLUMN payment_fund_id TEXT`,
+      `ALTER TABLE mission_registrations ADD COLUMN payment_received_by TEXT`,
+      `ALTER TABLE mission_registrations ADD COLUMN payment_date TEXT`,
+      // Ingresos ya registrados: fuente según el donante.
+      `UPDATE finance_entries SET source = CASE WHEN counterparty IN ('Grupo Kairós', 'Fundación Pálpitos') THEN 'grupo' ELSE 'externo' END WHERE kind = 'ingreso' AND source IS NULL`,
+      // El presupuesto asignado a materiales del plan inicial pasa a la lista de compras como primer ítem.
+      `INSERT INTO wish_items (id, mission_id, name, detail, category, qty, unit_cost, total, position, status, notes, created_by)
+        SELECT id || '-lista', mission_id, 'Materiales de construcción', 'Presupuesto asignado del plan inicial', 'construccion', 1, amount, amount, 0, 'pendiente', notes, 'sistema'
+        FROM finance_entries WHERE kind = 'gasto' AND status = 'proyectado' AND concept LIKE 'Materiales (presupuesto asignado)%'`,
+      `DELETE FROM finance_entries WHERE kind = 'gasto' AND status = 'proyectado' AND concept LIKE 'Materiales (presupuesto asignado)%'`,
+      `UPDATE finance_entries SET concept = 'Tienda y actividades' WHERE concept LIKE 'Tienda y actividades (presupuesto asignado)%'`,
+    ],
+  },
 ];

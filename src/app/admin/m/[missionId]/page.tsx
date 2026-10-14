@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { AREAS, areaInfo } from "@/lib/catalogs";
 import { siteUrl } from "@/lib/config";
 import { getMissionById, getMissionStats, missionHasTerms, recentActivity } from "@/lib/data";
-import { contributionSummary, listEntries, summarizeFinance } from "@/lib/finance";
+import { financeModel, financeSummaryText } from "@/lib/finance";
 import { formatCOP, formatDateRange, formatDateTime, formatShortDate, initials, percent } from "@/lib/format";
 import { missionTimeline } from "@/lib/mission-timeline";
 import { can, canEditTask, canExport, canViewFinance } from "@/lib/permissions";
@@ -66,15 +66,13 @@ export default async function MissionOverview({ params, searchParams }: Props) {
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
   const financeAllowed = canViewFinance(user);
-  const [stats, tasks, coordinators, activity, entries, aportes] = await Promise.all([
+  const [stats, tasks, coordinators, activity, finance] = await Promise.all([
     getMissionStats(mission),
     listTasks(mission.id),
     listCoordinators(),
     recentActivity(8),
-    financeAllowed ? listEntries(mission.id) : Promise.resolve([]),
-    financeAllowed ? contributionSummary(mission) : Promise.resolve(null),
+    financeAllowed ? financeModel(mission) : Promise.resolve(null),
   ]);
-  const finance = financeAllowed && aportes ? { count: entries.length, summary: summarizeFinance(entries, aportes) } : null;
   const timeline = missionTimeline(mission);
   const areas = summarizeAreas(tasks, timeline.today);
   const go = goCriteria(tasks);
@@ -195,22 +193,20 @@ export default async function MissionOverview({ params, searchParams }: Props) {
               <div>
                 <span className="section-title">Finanzas</span>
                 <span className="ml-2 text-sm text-muted">
-                  {finance.count} movimientos · presupuesto {formatCOP(finance.summary.gastos.proyectado)}
+                  {finance.expenses.length} gastos · {finance.incomes.length + finance.volunteers.length} ingresos · {finance.wish.length} en la lista de compras
                 </span>
               </div>
               <Link href={`${base}/finanzas`} className="btn-secondary">
-                Ver finanzas
+                Ver detalle →
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Kpi label="Gastos ejecutados" value={formatCOP(finance.summary.gastos.ejecutado)} />
-              <Kpi label="Disponible" value={formatCOP(finance.summary.gastos.disponible)} />
-              <Kpi label="Ingresos recibidos" value={formatCOP(finance.summary.ingresos.ejecutado)} highlight />
-              <Kpi label="Balance actual" value={formatCOP(finance.summary.balanceActual)} highlight />
+              <Kpi label="Ingresos *" value={formatCOP(finance.totals.incTotal)} />
+              <Kpi label="Gastos fijos" value={formatCOP(finance.totals.fijos)} />
+              <Kpi label="Saldo total" value={formatCOP(finance.totals.saldoTotal)} highlight={finance.totals.saldoTotal >= 0} danger={finance.totals.saldoTotal < 0} />
+              <Kpi label="Meta de recaudo" value={formatCOP(finance.totals.meta)} warn />
             </div>
-            {finance.summary.faltante > 0 ? (
-              <p className="text-sm font-semibold text-warn">Falta por recaudar {formatCOP(finance.summary.faltante)} para cubrir el presupuesto de gastos.</p>
-            ) : null}
+            <p className="text-sm text-muted">{financeSummaryText(finance.totals, formatCOP)}</p>
           </section>
         ) : null}
 
@@ -326,11 +322,13 @@ export default async function MissionOverview({ params, searchParams }: Props) {
   );
 }
 
-function Kpi({ label, value, highlight = false }: { label: string; value: number | string; highlight?: boolean }) {
+function Kpi({ label, value, highlight = false, danger = false, warn = false }: { label: string; value: number | string; highlight?: boolean; danger?: boolean; warn?: boolean }) {
+  const box = danger ? "border-red-200 bg-red-50" : warn ? "border-accent-500 bg-warn-soft" : highlight ? "border-brand-200 bg-brand-50" : "border-line bg-paper-2";
+  const text = danger ? "text-danger" : warn ? "text-warn" : highlight ? "text-brand-800" : "text-ink";
   return (
-    <div className={`rounded-xl border p-3 ${highlight ? "border-brand-200 bg-brand-50" : "border-line bg-paper-2"}`}>
+    <div className={`rounded-xl border p-3 ${box}`}>
       <p className="kpi-label">{label}</p>
-      <p className={`mt-0.5 text-2xl font-extrabold tracking-tight ${highlight ? "text-brand-800" : "text-ink"}`}>{value}</p>
+      <p className={`mt-0.5 text-2xl font-extrabold tracking-tight ${text}`}>{value}</p>
     </div>
   );
 }

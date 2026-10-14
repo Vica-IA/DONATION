@@ -3,12 +3,12 @@
 import { useActionState } from "react";
 import { Field } from "@/components/ui";
 import { PAYMENT_STATUS, REGISTRATION_STATUS, ROLES } from "@/lib/catalogs";
-import type { MissionRegistration, Organization, Volunteer } from "@/lib/db/schema";
+import type { FinanceFund, MissionRegistration, Organization, Volunteer } from "@/lib/db/schema";
 import { updateParticipant, type ParticipantFormState } from "./actions";
 
-type Props = { registration: MissionRegistration; volunteer: Volunteer; organizations: Organization[] };
+type Props = { registration: MissionRegistration; volunteer: Volunteer; organizations: Organization[]; funds: FinanceFund[] };
 
-export function ParticipantForm({ registration, volunteer, organizations }: Props) {
+export function ParticipantForm({ registration, volunteer, organizations, funds }: Props) {
   const action = updateParticipant.bind(null, registration.id);
   const [state, formAction, pending] = useActionState<ParticipantFormState, FormData>(action, { errors: {} });
   const { errors } = state;
@@ -59,6 +59,26 @@ export function ParticipantForm({ registration, volunteer, organizations }: Prop
         </Field>
         <Field label="Referencia / nota" htmlFor="paymentNotes" error={errors.paymentNotes}>
           <input id="paymentNotes" name="paymentNotes" className={cls("paymentNotes")} defaultValue={registration.paymentNotes ?? ""} placeholder="Transferencia 29/09" />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="¿A qué cuenta llegó?" htmlFor="paymentFundId" error={errors.paymentFundId} help="Tesorería: suma al saldo de esa cuenta.">
+          <select id="paymentFundId" name="paymentFundId" className={cls("paymentFundId")} defaultValue={registration.paymentFundId ?? ""}>
+            <option value="">Sin cuenta</option>
+            {funds
+              .filter((f) => f.active || f.id === registration.paymentFundId)
+              .map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+          </select>
+        </Field>
+        <Field label="Recibido por" htmlFor="paymentReceivedBy" error={errors.paymentReceivedBy}>
+          <input id="paymentReceivedBy" name="paymentReceivedBy" className={cls("paymentReceivedBy")} defaultValue={registration.paymentReceivedBy ?? ""} placeholder="Ej. Jhen" />
+        </Field>
+        <Field label="Fecha del aporte" htmlFor="paymentDate" error={errors.paymentDate}>
+          <input id="paymentDate" name="paymentDate" type="date" className={cls("paymentDate")} defaultValue={registration.paymentDate ?? ""} />
         </Field>
       </div>
       <h3 className="pt-2 text-sm font-semibold text-ink-soft">Datos de contacto</h3>

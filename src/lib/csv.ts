@@ -1,6 +1,6 @@
-import { BLOOD_TYPES, DOC_TYPES, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, SKILLS, labelOf } from "./catalogs";
+import { BLOOD_TYPES, DOC_TYPES, isFixedExpenseCategory, labelOf, PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, SKILLS } from "./catalogs";
 import type { RegistrationRow } from "./data";
-import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, FINANCE_STATUS, GENERAL_AREA } from "./catalogs";
+import { AREAS, FINANCE_CATEGORIES, FINANCE_KINDS, GENERAL_AREA } from "./catalogs";
 import type { FinanceRow } from "./finance";
 
 export function csvCell(value: unknown): string {
@@ -96,28 +96,66 @@ export function registrationsToCsv(rows: RegistrationRow[]): string {
 }
 
 /** Movimientos financieros de una misión (mismo formato: ; y BOM). */
-export function financeEntriesToCsv(rows: FinanceRow[]): string {
-  const headers = ["Fecha", "Tipo", "Estado", "Categoría", "Concepto", "Valor (COP)", "Área", "Proveedor / donante", "Referencia", "Responsable", "Notas", "Registrado por", "Registrado el", "Actualizado el"];
-  const lines = rows.map((r) =>
-    [
+export function financeEntriesToCsv(rows: FinanceRow[], fundLabel: (id: string | null | undefined) => string = (id) => id ?? ""): string {
+  const headers = [
+    "Fecha",
+    "Tipo",
+    "Estado",
+    "Categoría",
+    "Tipo de gasto",
+    "Concepto",
+    "Valor (COP)",
+    "Fijo / variable",
+    "Fuente",
+    "Proveedor / donante",
+    "Cuenta",
+    "Lo adelantó",
+    "Reembolsado desde",
+    "Referencia",
+    "Registrado por",
+    "Área",
+    "Notas",
+    "Creado por",
+    "Creado el",
+    "Actualizado el",
+  ];
+  const lines = rows.map((r) => {
+    const gasto = r.kind === "gasto";
+    const status = gasto
+      ? r.status === "ejecutado"
+        ? "Pagado"
+        : r.status === "comprometido"
+          ? "Comprometido"
+          : "Pendiente"
+      : r.status === "ejecutado"
+        ? "Recibido"
+        : "Estimado / prometido";
+    const budgetKind = gasto ? (r.budgetKind === "fijo" || r.budgetKind === "variable" ? r.budgetKind : isFixedExpenseCategory(r.category) ? "fijo" : "variable") : "";
+    return [
       r.entryDate,
       labelOf(FINANCE_KINDS, r.kind),
-      labelOf(FINANCE_STATUS, r.status),
+      status,
       labelOf(FINANCE_CATEGORIES, r.category),
+      r.sub,
       r.concept,
       r.amount,
-      r.area ? (r.area === GENERAL_AREA.value ? GENERAL_AREA.label : labelOf(AREAS, r.area)) : "",
+      budgetKind,
+      r.source === "grupo" ? "Grupo" : r.source === "externo" ? "Fuente externa" : "",
       r.counterparty,
+      r.fundId ? fundLabel(r.fundId) : "",
+      r.payKind === "person" ? r.payPerson : "",
+      r.reimbursedFundId ? fundLabel(r.reimbursedFundId) : "",
       r.reference,
-      r.ownerName,
+      r.registeredBy,
+      r.area ? (r.area === GENERAL_AREA.value ? GENERAL_AREA.label : labelOf(AREAS, r.area)) : "",
       r.notes,
       r.createdBy,
       r.createdAt,
       r.updatedAt,
     ]
       .map(csvCell)
-      .join(";"),
-  );
+      .join(";");
+  });
   const BOM = String.fromCharCode(0xfeff);
   return BOM + [headers.map(csvCell).join(";"), ...lines].join("\r\n");
 }

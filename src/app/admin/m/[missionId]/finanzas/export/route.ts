@@ -1,7 +1,7 @@
 import { getSessionUser } from "@/lib/auth";
 import { financeEntriesToCsv } from "@/lib/csv";
 import { getMissionById } from "@/lib/data";
-import { filterEntries, financeFiltersFromParams, listEntries } from "@/lib/finance";
+import { filterEntries, financeFiltersFromParams, listEntries, listFunds } from "@/lib/finance";
 import { canViewFinance } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ missionId: 
   if (!mission) return new Response("Misión no encontrada", { status: 404 });
   const filters = financeFiltersFromParams(Object.fromEntries(new URL(request.url).searchParams));
   const filtered = Object.values(filters).some(Boolean);
-  const csv = financeEntriesToCsv(filterEntries(await listEntries(mission.id), filters));
+  const [entries, funds] = await Promise.all([listEntries(mission.id), listFunds(mission.id)]);
+  const labels = new Map(funds.map((f) => [f.id, f.label] as const));
+  const csv = financeEntriesToCsv(filterEntries(entries, filters), (id) => (id ? (labels.get(id) ?? "Cuenta eliminada") : ""));
   const stamp = new Date().toISOString().slice(0, 10);
   return new Response(csv, {
     headers: {
