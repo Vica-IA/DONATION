@@ -7,6 +7,7 @@ import { PAYMENT_STATUS, REGISTRATION_STATUS, ROLES, labelOf } from "@/lib/catal
 import { getMissionById, getMissionStats, listOrganizations, listRegistrations, missionHasTerms, registrationFiltersFromParams } from "@/lib/data";
 import { formatDateRange, toQuery } from "@/lib/format";
 import { can, canExport, participantScope } from "@/lib/permissions";
+import { listSquads } from "@/lib/program";
 
 export const metadata = { title: "Voluntarios" };
 
@@ -14,6 +15,12 @@ type Props = {
   params: Promise<{ missionId: string }>;
   searchParams: Promise<{ q?: string; estado?: string; grupo?: string; requisito?: string; eliminada?: string }>;
 };
+
+const COLS = "lg:grid-cols-[110px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_120px_80px]";
+
+function payBadge(status: string) {
+  return status === "pagado" || status === "exento" ? "badge-confirmado" : status === "parcial" ? "badge-lista_espera" : "badge-pendiente";
+}
 
 export default async function MissionParticipantsPage({ params, searchParams }: Props) {
   const { missionId } = await params;
@@ -35,11 +42,9 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
   const filtering = Boolean(q || estado || requisito || (scope.kind !== "organization" && grupo));
   const exportHref = `${base}/export${toQuery({ q, estado, grupo: scope.kind === "organization" ? "" : grupo, requisito })}`;
 
-  const [rows, organizations, stats] = await Promise.all([
-    listRegistrations(mission, filters),
-    listOrganizations(),
-    getMissionStats(mission),
-  ]);
+  const [rows, organizations, stats, squads] = await Promise.all([listRegistrations(mission, filters), listOrganizations(), getMissionStats(mission), listSquads(mission.id)]);
+  const squadOf = new Map<string, string>();
+  for (const s of squads) for (const m of s.members) squadOf.set(m.registrationId, s.name);
 
   const phones = rows
     .filter((r) => r.registration.status === "confirmado")
@@ -73,137 +78,121 @@ export default async function MissionParticipantsPage({ params, searchParams }: 
         }
       />
       <PageBody>
-      {eliminada ? (
-        <div className="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800" role="status">
-          Inscripción de {eliminada} eliminada.
-        </div>
-      ) : null}
-      {scope.kind === "organization" ? (
-        <p className="text-xs text-muted">Ves únicamente las personas de tu grupo ({organizations.find((o) => o.id === grupo)?.name ?? "grupo"}). Fechas: {formatDateRange(mission.startDate, mission.endDate)}.</p>
-      ) : null}
-
-      <form className="card-tight grid gap-3 sm:grid-cols-[1fr_auto_auto_auto_auto]" method="get">
-        <input name="q" className="input" placeholder="Buscar por nombre, documento, teléfono o correo" defaultValue={q} />
-        <select name="estado" className="input sm:w-44" defaultValue={estado}>
-          <option value="">Todos los estados</option>
-          {REGISTRATION_STATUS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        {eliminada ? (
+          <div className="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800" role="status">
+            Inscripción de {eliminada} eliminada.
+          </div>
+        ) : null}
         {scope.kind === "organization" ? (
-          <input type="hidden" name="grupo" value={grupo} />
-        ) : (
-          <select name="grupo" className="input sm:w-44" defaultValue={grupo}>
-            <option value="">Todos los grupos</option>
-            {organizations.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
+          <p className="text-xs text-muted">
+            Ves únicamente las personas de tu grupo ({organizations.find((o) => o.id === grupo)?.name ?? "grupo"}). Fechas: {formatDateRange(mission.startDate, mission.endDate)}.
+          </p>
+        ) : null}
+
+        <form className="card-tight grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] items-center gap-2.5 p-3" method="get">
+          <input name="q" className="input" placeholder="Buscar por nombre, documento o teléfono" defaultValue={q} />
+          <select name="estado" className="input" defaultValue={estado}>
+            <option value="">Todos los estados</option>
+            {REGISTRATION_STATUS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>
-        )}
-        <select name="requisito" className="input sm:w-52" defaultValue={requisito}>
-          <option value="">Todos los requisitos</option>
-          {hasTerms ? <option value="condiciones">Condiciones pendientes</option> : null}
-          <option value="aporte">Aporte pendiente</option>
-        </select>
-        <button type="submit" className="btn-primary">
-          Filtrar
-        </button>
-      </form>
+          {scope.kind === "organization" ? (
+            <input type="hidden" name="grupo" value={grupo} />
+          ) : (
+            <select name="grupo" className="input" defaultValue={grupo}>
+              <option value="">Todos los grupos</option>
+              {organizations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <select name="requisito" className="input" defaultValue={requisito}>
+            <option value="">Todos los requisitos</option>
+            {hasTerms ? <option value="condiciones">Condiciones pendientes</option> : null}
+            <option value="aporte">Aporte pendiente</option>
+          </select>
+          <button type="submit" className="btn-primary">
+            Filtrar
+          </button>
+        </form>
 
-      <div className="card-tight overflow-x-auto p-0">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Estado</th>
-              <th>Nombre</th>
-              <th>Grupo</th>
-              <th>Contacto</th>
-              <th>Documento</th>
-              <th>Rol</th>
-              <th>Requisitos</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="py-10 text-center text-muted">
-                  No hay inscripciones con esos criterios.
-                </td>
-              </tr>
-            ) : (
-              rows.map(({ registration: r, volunteer: v, organization: o, termsAcceptedAt }) => (
-                <tr key={r.id} className="hover:bg-paper-2">
-                  <td>
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td>
-                    <Link href={`${base}/voluntarios/${r.id}`} className="font-semibold text-ink hover:text-brand-700">
-                      {v.fullName}
-                    </Link>
-                    {v.city ? <div className="text-xs text-muted">{v.city}</div> : null}
-                  </td>
-                  <td>
-                    {o?.name ?? v.organizationOther ?? <span className="text-faint">—</span>}
-                    {v.refugio ? <div className="text-xs text-muted">Refugio: {v.refugio}</div> : null}
-                  </td>
-                  <td>
-                    <a href={`https://wa.me/${v.phone.replace(/\D/g, "")}`} className="text-brand-700 hover:underline" target="_blank" rel="noopener noreferrer">
-                      {v.phone}
-                    </a>
-                    {v.email ? <div className="text-xs text-muted">{v.email}</div> : null}
-                  </td>
-                  <td className="whitespace-nowrap text-muted">
-                    {v.docType} {v.docNumber}
-                  </td>
-                  <td>
-                    {r.assignedRole ? (
-                      <span className="font-medium">{labelOf(ROLES, r.assignedRole)}</span>
-                    ) : r.preferredRole ? (
-                      <span className="text-muted">{labelOf(ROLES, r.preferredRole)} (pref.)</span>
-                    ) : (
-                      <span className="text-faint">—</span>
-                    )}
-                  </td>
-                  <td className="space-y-1 whitespace-nowrap">
-                    {hasTerms ? (
-                      <div>
-                        <span className={termsAcceptedAt ? "badge-confirmado" : "badge-lista_espera"}>
-                          {termsAcceptedAt ? "Condiciones ✓" : "Condiciones pendientes"}
-                        </span>
-                      </div>
-                    ) : null}
-                    <div>
-                      <span className={r.paymentStatus === "pagado" || r.paymentStatus === "exento" ? "badge-confirmado" : "badge-lista_espera"}>
-                        Aporte: {labelOf(PAYMENT_STATUS, r.paymentStatus).toLowerCase()}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <Link href={`${base}/voluntarios/${r.id}`} className="btn-ghost px-2 py-1 text-xs">
-                      {canManage ? "Gestionar" : "Ver"}
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted">
-        {rows.length} {rows.length === 1 ? "registro" : "registros"} en esta vista.
-      </p>
+        <section className="overflow-x-auto rounded-2xl border border-line bg-white">
+          <div className="lg:min-w-[920px]">
+          <div className={`hidden gap-3 border-b border-line bg-paper-2 px-[18px] py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted lg:grid ${COLS}`}>
+            <span>Estado</span>
+            <span>Nombre</span>
+            <span>Grupo</span>
+            <span>Contacto</span>
+            <span>Documento</span>
+            <span>Rol</span>
+            <span>Aporte</span>
+            <span />
+          </div>
+          {rows.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted">No hay inscripciones con esos criterios.</p> : null}
+          {rows.map(({ registration: r, volunteer: v, organization: o, termsAcceptedAt }) => {
+            const squad = squadOf.get(r.id);
+            return (
+              <div key={r.id} className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 border-b border-line-soft px-4 py-3 text-sm last:border-b-0 hover:bg-paper-2 sm:px-[18px] lg:items-center lg:gap-3 ${COLS}`} data-vol={v.fullName}>
+                <span>
+                  <StatusBadge status={r.status} />
+                </span>
+                <div className="flex min-w-0 flex-col gap-px">
+                  <Link href={`${base}/voluntarios/${r.id}`} className="font-semibold text-ink hover:text-brand-700">
+                    {v.fullName}
+                  </Link>
+                  {v.city || squad ? <span className="text-xs text-muted">{[v.city, squad].filter(Boolean).join(" · ")}</span> : null}
+                </div>
+                <div className="col-start-2 flex min-w-0 flex-col lg:col-start-auto">
+                  <span>{o?.name ?? v.organizationOther ?? <span className="text-faint">—</span>}</span>
+                  {v.refugio ? <span className="text-xs text-muted">Refugio: {v.refugio}</span> : null}
+                </div>
+                <div className="col-start-2 flex min-w-0 flex-col lg:col-start-auto">
+                  <a href={`https://wa.me/${v.phone.replace(/\D/g, "")}`} className="break-all text-brand-700 hover:underline" target="_blank" rel="noopener noreferrer">
+                    {v.phone}
+                  </a>
+                  {v.email ? <span className="truncate text-xs text-muted">{v.email}</span> : null}
+                </div>
+                <span className="col-start-2 break-all text-[13px] text-muted lg:col-start-auto">
+                  {v.docType} {v.docNumber}
+                </span>
+                <span className="col-start-2 text-ink-soft lg:col-start-auto">
+                  {r.assignedRole ? (
+                    <span className="font-medium">{labelOf(ROLES, r.assignedRole)}</span>
+                  ) : r.preferredRole ? (
+                    <span className="text-muted">{labelOf(ROLES, r.preferredRole)} (pref.)</span>
+                  ) : (
+                    <span className="text-faint">Sin rol</span>
+                  )}
+                </span>
+                <div className="col-start-2 flex flex-wrap gap-1 lg:col-start-auto lg:flex-col lg:items-start">
+                  <span className={payBadge(r.paymentStatus)} title="Aporte">
+                    {labelOf(PAYMENT_STATUS, r.paymentStatus)}
+                  </span>
+                  {hasTerms && !termsAcceptedAt ? <span className="badge-lista_espera">Condiciones pendientes</span> : null}
+                </div>
+                <Link href={`${base}/voluntarios/${r.id}`} className="col-start-2 justify-self-start text-xs font-semibold text-brand-700 lg:col-start-auto lg:justify-self-end">
+                  {canManage ? "Gestionar" : "Ver"}
+                </Link>
+              </div>
+            );
+          })}
+          </div>
+        </section>
+        <p className="text-xs text-muted">
+          {rows.length} {rows.length === 1 ? "registro" : "registros"} en esta vista. La información de salud solo la ven el administrador, el líder del grupo y la coordinación de Logística.
+        </p>
 
-      {phones ? (
-        <details className="card-tight">
-          <summary className="cursor-pointer text-sm font-semibold">Teléfonos de confirmados en esta vista (para lista de difusión)</summary>
-          <p className="mt-2 break-all font-mono text-xs text-muted">{phones}</p>
-        </details>
-      ) : null}
+        {phones ? (
+          <details className="card-tight">
+            <summary className="cursor-pointer text-sm font-semibold">Teléfonos de confirmados en esta vista (para lista de difusión)</summary>
+            <p className="mt-2 break-all font-mono text-xs text-muted">{phones}</p>
+          </details>
+        ) : null}
       </PageBody>
     </>
   );

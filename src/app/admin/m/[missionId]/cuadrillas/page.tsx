@@ -38,8 +38,8 @@ export default async function SquadsPage({ params }: { params: Promise<{ mission
       />
       <PageBody>
         <p className="text-[13px] text-muted">Cada persona confirmada pertenece a una sola cuadrilla. Abre una cuadrilla para elegir integrantes y líder.</p>
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {list.length === 0 ? <p className="card text-sm text-muted sm:col-span-2 xl:col-span-3">Todavía no hay cuadrillas.</p> : null}
+        <section className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
+          {list.length === 0 ? <p className="card col-span-full text-sm text-muted">Todavía no hay cuadrillas.</p> : null}
           {list.map((s) => {
             const a = s.area ? areaInfo(s.area) : null;
             return (
@@ -58,6 +58,9 @@ export default async function SquadsPage({ params }: { params: Promise<{ mission
                   <span className="text-faint">Líder:</span> {s.leader ? s.leader.fullName : "sin asignar"}
                 </span>
                 {s.meetingPoint ? <span className="text-xs text-muted">{s.meetingPoint}</span> : null}
+                <span className="text-[13px] leading-relaxed text-ink-soft">
+                  {s.members.length === 0 ? <span className="text-faint">Sin integrantes todavía.</span> : s.members.map((m) => m.fullName).join(" · ")}
+                </span>
               </Link>
             );
           })}

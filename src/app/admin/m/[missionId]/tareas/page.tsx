@@ -29,19 +29,27 @@ export default async function TasksPage({ params, searchParams }: { params: Prom
         kicker={mission.name}
         title="Tablero de tareas"
         badge={<span className="text-xs text-muted">{tasks.filter((t) => t.status !== "hecha").length} abiertas de {tasks.length}</span>}
-        actions={areas ? <a href="?nueva=1#nueva" className="btn-primary">+ Nueva tarea</a> : null}
       />
       <PageBody>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[13px] text-muted">Usa el botón de cada tarjeta para avanzarla de estado. Abre una tarea para editarla.</p>
+          {areas && !nueva ? (
+            <a href="?nueva=1#nueva" className="btn-primary">
+              + Nueva tarea
+            </a>
+          ) : null}
+        </div>
         {areas && nueva ? (
           <div id="nueva">
             <TaskForm
               missionId={mission.id}
               people={people.map((p) => ({ id: p.id, name: p.name, label: `${p.name}${p.area ? ` · ${areaInfo(p.area).short}` : p.organizationName ? ` · ${p.organizationName}` : ""}` }))}
               areas={areas}
+              heading="Nueva tarea"
+              cancelHref={`/admin/m/${mission.id}/tareas`}
             />
           </div>
         ) : null}
-        <p className="text-[13px] text-muted">Clic en el botón de cada tarjeta para avanzarla de estado. Abre una tarea para editarla.</p>
         <div className="grid items-start gap-3.5 md:grid-cols-3">
           {columns.map((col) => (
             <div key={col.value} className="flex flex-col gap-2 rounded-2xl bg-sand p-3">

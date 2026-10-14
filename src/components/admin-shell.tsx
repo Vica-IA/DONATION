@@ -210,17 +210,17 @@ export function AdminShell({ user, mission, counts, coordinators, children }: Pr
 export function PageHeader({ kicker, title, actions, badge }: { kicker?: string; title: string; actions?: React.ReactNode; badge?: React.ReactNode }) {
   return (
     <div className="sticky top-0 z-10 flex min-h-16 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line bg-white px-3.5 py-2.5 lg:px-8 lg:py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <div className="flex min-w-0 flex-1 basis-[240px] items-center gap-2.5">
         <Link href="/admin" className="flex shrink-0 lg:hidden" aria-label="Centro de misión">
           <BrandMark size={32} />
         </Link>
         <div className="flex min-w-0 flex-col">
           {kicker ? <span className="truncate text-xs text-muted">{kicker}</span> : null}
           <span className="truncate text-[18px] font-extrabold tracking-[-0.02em]">{title}</span>
+          {badge ? <span className="hidden truncate sm:block">{badge}</span> : null}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {badge ? <span className="hidden items-center sm:flex">{badge}</span> : null}
+      <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
         {actions}
         <StatusBadge className="hidden md:inline-flex" />
         <MenuButton />

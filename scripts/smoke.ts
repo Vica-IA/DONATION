@@ -182,6 +182,10 @@ async function main() {
   assert.match(dash, /Sin coordinador asignado/);
   assert.match(dash, /Base de datos: local \(archivo\)/); // la prueba corre con ALLOW_LOCAL_DB=true
   assert.match(dash, /NO conserva los datos/); // y el panel lo advierte en rojo
+  assert.match(dash, /confirmados de \d+/);
+  assert.match(dash, /Disponibles/i); // la etiqueta va en mayúsculas por CSS
+  assert.ok((await page.getByRole("link", { name: "Ver lista →" }).count()) > 0);
+  assert.ok((await page.getByRole("link", { name: "Ver detalle →" }).count()) > 0);
   console.log("✓ login y centro de misión (conteos, fases, criterios Go/No-Go)");
 
   // Mi cuenta: cambio voluntario de contraseña y reingreso con la nueva
@@ -214,7 +218,10 @@ async function main() {
   console.log("✓ criterio Go/No-Go marcado desde el resumen");
 
   // Tablero de tareas: crear y avanzar
-  await page.goto(`${base}/tareas?nueva=1`);
+  await page.goto(`${base}/tareas`);
+  await page.getByRole("link", { name: "+ Nueva tarea" }).click();
+  await page.waitForURL("**/tareas?nueva=1**");
+  assert.ok((await page.getByRole("link", { name: "Cancelar" }).count()) > 0);
   await page.fill("#title", "Tarea de prueba admin");
   await page.selectOption("#area", "transporte");
   await page.fill("#dueDate", "2026-10-03");
@@ -663,7 +670,17 @@ async function main() {
   assert.equal(await page.locator("[data-announcement-title]").count(), 2);
   assert.equal(await page.locator("[data-announcement-title]").first().getAttribute("data-announcement-title"), "Cambio de hora de salida"); // el fijado va primero
   assert.match(await body(page), /Fijado/);
-  console.log("✓ avisos: publicados, el fijado primero");
+  await page.fill("#title", "Aviso que se elimina");
+  await page.fill("#body", "Este aviso se borra desde la lista.");
+  await page.getByRole("button", { name: "Publicar aviso" }).click();
+  await page.getByText("Aviso publicado.").waitFor();
+  await page.goto(`${base}/avisos`);
+  assert.equal(await page.locator("[data-announcement-title]").count(), 3);
+  page.once("dialog", (d) => d.accept());
+  await page.locator('[data-announcement-title="Aviso que se elimina"]').getByRole("button", { name: "Eliminar" }).click();
+  await page.locator('[data-announcement-title="Aviso que se elimina"]').waitFor({ state: "detached" }); // la acción redirige a la lista sin el aviso
+  assert.equal(await page.locator("[data-announcement-title]").count(), 2);
+  console.log("✓ avisos: publicados, el fijado primero, eliminado desde la lista");
 
   await page.goto(`${base}/cuadrillas`);
   assert.match(await body(page), /Cuadrillas/);
@@ -691,7 +708,10 @@ async function main() {
   await page.getByText("Cambios guardados.").waitFor();
   await page.goto(`${base}/cuadrillas`);
   assert.equal(await page.locator('[data-squad-name="Cuadrilla Obra 1"]').count(), 1);
-  assert.match(await body(page), /Líder:\s*Juan Prueba Uno/);
+  assert.match(await page.locator('[data-squad-name="Cuadrilla Obra 1"]').innerText(), /Líder:\s*Juan Prueba Uno[\s\S]*Juan Prueba Uno/); // líder e integrante en la tarjeta
+  await page.goto(`${base}/voluntarios`);
+  assert.match(await page.locator('[data-vol="Juan Prueba Uno"]').innerText(), /Cuadrilla Obra 1/); // ciudad · cuadrilla bajo el nombre
+  assert.match(await page.locator('[data-vol="María Prueba Dos"]').innerText(), /Pagado/); // chip de aporte
   // la ficha de la persona muestra su cuadrilla
   await page.goto(`${base}/voluntarios/${registrationId}`);
   assert.match(await body(page), /Cuadrilla Obra 1/);
@@ -873,6 +893,7 @@ async function main() {
   b = await body(page);
   assert.match(b, /Tarea de Logística por coordinadora/);
   assert.match(b, /Carolina Coordinadora/);
+  assert.match(await page.locator("[data-area-program]").innerText(), /Desayuno, oración y devocional/); // En el programa
   // en el tablero solo puede avanzar tareas de su área (las de transporte no tienen botón)
   await page.goto(`${base}/tareas`);
   assert.ok((await page.locator('[data-title="Transporte confirmado"]').count()) > 0, "la tarea de transporte está en el tablero");

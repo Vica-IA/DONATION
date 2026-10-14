@@ -4,9 +4,10 @@ import { PageBody, PageHeader } from "@/components/admin-shell";
 import { requireUser } from "@/lib/auth";
 import { AREAS, AREA_VOLUNTEER_ROLES, ROLES, areaInfo, isArea, labelOf } from "@/lib/catalogs";
 import { getMissionById, listVolunteersForArea } from "@/lib/data";
-import { initials } from "@/lib/format";
+import { formatDayShort, formatTime, initials } from "@/lib/format";
 import { todayBogota } from "@/lib/mission-timeline";
 import { can, canEditTask, taskAreasFor } from "@/lib/permissions";
+import { listItinerary } from "@/lib/program";
 import { listTasks } from "@/lib/tasks";
 import { listAssignableUsers, listCoordinators } from "@/lib/users";
 import { DueLabel, StatusPill, TaskCheck } from "../../tareas/task-bits";
@@ -19,12 +20,14 @@ export default async function AreaPage({ params }: { params: Promise<{ missionId
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
   const info = areaInfo(area);
-  const [tasks, coordinators, people, team] = await Promise.all([
+  const [tasks, coordinators, people, team, itinerary] = await Promise.all([
     listTasks(mission.id),
     listCoordinators(),
     listAssignableUsers(),
     listVolunteersForArea(mission, AREA_VOLUNTEER_ROLES[area]),
+    listItinerary(mission.id),
   ]);
+  const areaItems = itinerary.filter((i) => i.area === area);
   const person = coordinators.get(area);
   const areaTasks = tasks.filter((t) => t.area === area);
   const done = areaTasks.filter((t) => t.status === "hecha").length;
@@ -125,6 +128,7 @@ export default async function AreaPage({ params }: { params: Promise<{ missionId
               />
             ) : null}
           </div>
+          <div className="space-y-4">
           <section className="card-tight flex flex-col gap-2 sm:p-5">
             <span className="section-title">Equipo asignado</span>
             <p className="text-xs text-muted">
@@ -142,6 +146,27 @@ export default async function AreaPage({ params }: { params: Promise<{ missionId
               </div>
             ))}
           </section>
+          <section className="card-tight flex flex-col gap-1 sm:p-5" data-area-program>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="section-title">En el programa</span>
+              <Link href={`${base}/programa?area=${area}`} className="text-[13px] font-semibold text-brand-700">
+                Ver programa →
+              </Link>
+            </div>
+            {areaItems.length === 0 ? <p className="py-1 text-sm text-muted">Esta área no coordina actividades todavía.</p> : null}
+            {areaItems.map((it) => (
+              <div key={it.id} className="flex gap-3 border-b border-line-soft py-1.5 text-sm last:border-b-0">
+                <span className="mono w-[110px] shrink-0 text-xs text-muted">
+                  {formatDayShort(it.day)} · {formatTime(it.startTime)}
+                </span>
+                <Link href={`${base}/programa?dia=${it.day}&editar=${it.id}`} className="min-w-0 flex-1 truncate hover:text-brand-700">
+                  {it.title}
+                  {it.owner ? <span className="text-xs text-faint"> · {it.owner}</span> : null}
+                </Link>
+              </div>
+            ))}
+          </section>
+          </div>
         </div>
       </PageBody>
     </>

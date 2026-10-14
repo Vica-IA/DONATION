@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Field } from "@/components/ui";
 import { AREAS, GENERAL_AREA, TASK_STATUS, type Area } from "@/lib/catalogs";
@@ -16,11 +17,15 @@ type Props = {
   areas: "all" | Area[];
   defaultArea?: string;
   compact?: boolean;
+  /** Título de la tarjeta (p. ej. "Nueva tarea"). */
+  heading?: string;
+  /** Enlace "Cancelar" junto al botón de guardar. */
+  cancelHref?: string;
 };
 
 const EMPTY: TaskFormState = { errors: {}, values: {} };
 
-export function TaskForm({ missionId, task, people, areas, defaultArea, compact = false }: Props) {
+export function TaskForm({ missionId, task, people, areas, defaultArea, compact = false, heading, cancelHref }: Props) {
   const action = task ? updateTaskAction.bind(null, missionId, task.id) : createTaskAction.bind(null, missionId);
   const [state, formAction, pending] = useActionState<TaskFormState, FormData>(action, EMPTY);
   const { errors, values } = state;
@@ -31,6 +36,7 @@ export function TaskForm({ missionId, task, people, areas, defaultArea, compact 
 
   return (
     <form action={formAction} className={`${compact ? "card-tight" : "card"} space-y-4`} noValidate>
+      {heading ? <h2 className="section-title">{heading}</h2> : null}
       {errors._form ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errors._form}</div> : null}
       {state.saved && task ? <div className="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800">Cambios guardados.</div> : null}
       {state.saved && !task ? <div className="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-800">Tarea creada.</div> : null}
@@ -90,6 +96,11 @@ export function TaskForm({ missionId, task, people, areas, defaultArea, compact 
         <button type="submit" className="btn-primary" disabled={pending}>
           {pending ? "Guardando…" : task ? "Guardar cambios" : "Crear tarea"}
         </button>
+        {cancelHref ? (
+          <Link href={cancelHref} className="btn-secondary">
+            Cancelar
+          </Link>
+        ) : null}
       </div>
     </form>
   );

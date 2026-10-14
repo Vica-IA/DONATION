@@ -104,14 +104,17 @@ export default async function MissionOverview({ params, searchParams }: Props) {
         <section className="flex flex-col gap-5 rounded-[20px] bg-brand-900 p-6 text-paper sm:p-7">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-semibold text-accent-500">Fase actual · {timeline.phaseName}</span>
+              <span className="text-[13px] font-semibold text-accent-500">
+                Fase actual · {timeline.phaseName}
+                {timeline.status === "campo" ? ` · Día ${timeline.dayOfMission}` : timeline.status === "antes" ? ` · ${timeline.daysLeft} días a la salida` : ` · ${timeline.daysLeft} días desde el cierre`}
+              </span>
               <span className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[34px]">1 vivienda + 1 modelo replicable</span>
               <span className="text-[15px] text-[#cfe3db]">Primero verificamos. Después asignamos. Luego ejecutamos. Finalmente demostramos.</span>
             </div>
-            <div className="flex gap-7">
+            <div className="flex flex-wrap gap-7">
               <div className="flex flex-col">
-                <span className="text-[40px] font-extrabold leading-none tracking-[-0.03em]">{timeline.status === "campo" ? timeline.dayOfMission : timeline.daysLeft}</span>
-                <span className="text-xs text-[#a9c9bd]">{timeline.status === "campo" ? "día de misión" : timeline.status === "antes" ? "días a la salida" : "días desde el cierre"}</span>
+                <span className="text-[40px] font-extrabold leading-none tracking-[-0.03em]">{stats.byStatus.confirmado}</span>
+                <span className="text-xs text-[#a9c9bd]">confirmados de {mission.capacity}</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-[40px] font-extrabold leading-none tracking-[-0.03em]">
@@ -140,78 +143,73 @@ export default async function MissionOverview({ params, searchParams }: Props) {
           </div>
         </section>
 
-        {/* Voluntarios */}
-        <section className="card-tight flex flex-col gap-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+        {/* Voluntarios y Finanzas */}
+        <section className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))]">
+          <div className="card-tight flex flex-col gap-3 sm:p-[18px]" data-card="voluntarios">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="section-title">Voluntarios</span>
-              <span className="ml-2 text-sm text-muted">
-                {stats.byStatus.confirmado} de {mission.capacity} cupos · {stats.available} disponibles
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href={`${base}/voluntarios`} className="btn-primary">
-                Ver voluntarios
+              <Link href={`${base}/voluntarios`} className="text-[13px] font-semibold text-brand-700">
+                Ver lista →
               </Link>
+            </div>
+            <Progress value={stats.byStatus.confirmado} max={mission.capacity} />
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2">
+              <Kpi label="Confirmados" value={stats.byStatus.confirmado} highlight />
+              <Kpi label="Disponibles" value={stats.available} />
+              <Kpi label="Lista de espera" value={stats.byStatus.lista_espera} warn={stats.byStatus.lista_espera > 0} />
+              <Kpi label="Pendientes" value={stats.byStatus.pendiente} />
+              <Kpi label="Cancelados" value={stats.byStatus.cancelado} danger={stats.byStatus.cancelado > 0} />
+              {missionHasTerms(mission) ? <Kpi label="Condiciones ✓" value={`${stats.termsAccepted}/${stats.byStatus.confirmado}`} /> : null}
+              <Kpi label="Aporte pagado" value={`${stats.paid}/${stats.byStatus.confirmado}`} />
+            </div>
+            {stats.byOrganization.length > 0 ? (
+              <p className="text-[13px] text-muted">
+                Por grupo:{" "}
+                {stats.byOrganization.map((o, i) => (
+                  <span key={o.name}>
+                    {i > 0 ? " · " : ""}
+                    <span className="font-semibold text-ink">{o.name}</span> {o.confirmed}/{o.total}
+                  </span>
+                ))}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-1.5">
               <CopyButton text={formUrl} label="Copiar formulario" />
-              <a className="btn-accent" href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer">
+              <a className="btn-accent !py-1.5 text-[13px]" href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer">
                 WhatsApp
               </a>
               {canExport(user) ? (
-                <a className="btn-ghost" href={`${base}/export`}>
+                <a className="btn-ghost !py-1.5 text-[13px]" href={`${base}/export`}>
                   CSV
                 </a>
               ) : null}
             </div>
           </div>
-          <Progress value={stats.byStatus.confirmado} max={mission.capacity} />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Kpi label="Confirmados" value={stats.byStatus.confirmado} highlight />
-            <Kpi label="Lista de espera" value={stats.byStatus.lista_espera} />
-            <Kpi label="Pendientes" value={stats.byStatus.pendiente} />
-            <Kpi label="Cancelados" value={stats.byStatus.cancelado} />
-            {missionHasTerms(mission) ? <Kpi label="Condiciones ✓" value={`${stats.termsAccepted}/${stats.byStatus.confirmado}`} /> : <Kpi label="Ocupación" value={`${percent(stats.byStatus.confirmado, mission.capacity)}%`} />}
-            <Kpi label="Aporte pagado" value={`${stats.paid}/${stats.byStatus.confirmado}`} />
-          </div>
-          {stats.byOrganization.length > 0 ? (
-            <p className="text-sm text-muted">
-              Por grupo:{" "}
-              {stats.byOrganization.map((o, i) => (
-                <span key={o.name}>
-                  {i > 0 ? " · " : ""}
-                  <span className="font-semibold text-ink">{o.name}</span> {o.confirmed}/{o.total}
-                </span>
-              ))}
-            </p>
+
+          {finance ? (
+            <div className="card-tight flex flex-col gap-3 sm:p-[18px]" data-card="finanzas">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="section-title">Finanzas</span>
+                <Link href={`${base}/finanzas`} className="text-[13px] font-semibold text-brand-700">
+                  Ver detalle →
+                </Link>
+              </div>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
+                <Kpi label="Ingresos *" value={formatCOP(finance.totals.incTotal)} mono />
+                <Kpi label="Gastos fijos" value={formatCOP(finance.totals.fijos)} mono />
+                <Kpi label="Saldo total" value={formatCOP(finance.totals.saldoTotal)} mono danger={finance.totals.saldoTotal < 0} />
+                <Kpi label="Meta de recaudo" value={formatCOP(finance.totals.meta)} mono warn />
+              </div>
+              <p className="text-[13px] text-muted">{financeSummaryText(finance.totals, formatCOP)}</p>
+              <p className="text-xs text-faint">
+                {finance.expenses.length} gastos · {finance.incomes.length + finance.volunteers.length} ingresos · {finance.wish.length} en la lista de compras
+              </p>
+            </div>
           ) : null}
         </section>
 
-        {/* Finanzas */}
-        {finance ? (
-          <section className="card-tight flex flex-col gap-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <span className="section-title">Finanzas</span>
-                <span className="ml-2 text-sm text-muted">
-                  {finance.expenses.length} gastos · {finance.incomes.length + finance.volunteers.length} ingresos · {finance.wish.length} en la lista de compras
-                </span>
-              </div>
-              <Link href={`${base}/finanzas`} className="btn-secondary">
-                Ver detalle →
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Kpi label="Ingresos *" value={formatCOP(finance.totals.incTotal)} />
-              <Kpi label="Gastos fijos" value={formatCOP(finance.totals.fijos)} />
-              <Kpi label="Saldo total" value={formatCOP(finance.totals.saldoTotal)} highlight={finance.totals.saldoTotal >= 0} danger={finance.totals.saldoTotal < 0} />
-              <Kpi label="Meta de recaudo" value={formatCOP(finance.totals.meta)} warn />
-            </div>
-            <p className="text-sm text-muted">{financeSummaryText(finance.totals, formatCOP)}</p>
-          </section>
-        ) : null}
-
         {/* Coordinadores */}
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-3">
           {areas
             .filter((s) => s.area !== "general")
             .map((s) => {
@@ -245,9 +243,9 @@ export default async function MissionOverview({ params, searchParams }: Props) {
         </section>
 
         {/* Go/No-Go + críticos */}
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-4">
           <div className="card-tight flex flex-col gap-3 sm:p-5">
-            <div className="flex items-baseline justify-between">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="section-title">Criterios Go / No-Go</span>
               <span className="text-[13px] text-muted">
                 Cierre operativo {formatShortDate(timeline.phases[2].start)}–{formatShortDate(timeline.phases[2].end)} · {go.done}/{go.total}
@@ -322,13 +320,13 @@ export default async function MissionOverview({ params, searchParams }: Props) {
   );
 }
 
-function Kpi({ label, value, highlight = false, danger = false, warn = false }: { label: string; value: number | string; highlight?: boolean; danger?: boolean; warn?: boolean }) {
+function Kpi({ label, value, highlight = false, danger = false, warn = false, mono = false }: { label: string; value: number | string; highlight?: boolean; danger?: boolean; warn?: boolean; mono?: boolean }) {
   const box = danger ? "border-red-200 bg-red-50" : warn ? "border-accent-500 bg-warn-soft" : highlight ? "border-brand-200 bg-brand-50" : "border-line bg-paper-2";
   const text = danger ? "text-danger" : warn ? "text-warn" : highlight ? "text-brand-800" : "text-ink";
   return (
-    <div className={`rounded-xl border p-3 ${box}`}>
+    <div className={`rounded-xl border px-3 py-2.5 ${box}`}>
       <p className="kpi-label">{label}</p>
-      <p className={`mt-0.5 text-2xl font-extrabold tracking-tight ${text}`}>{value}</p>
+      <p className={`mt-0.5 tracking-tight ${mono ? "mono text-[17px] font-semibold" : "text-[22px] font-extrabold"} ${text}`}>{value}</p>
     </div>
   );
 }
