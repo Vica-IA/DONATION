@@ -353,4 +353,30 @@ export const MIGRATIONS: { id: string; statements: string[] }[] = [
       `UPDATE finance_entries SET concept = 'Tienda y actividades' WHERE concept LIKE 'Tienda y actividades (presupuesto asignado)%'`,
     ],
   },
+  {
+    id: "0012_program_v2",
+    statements: [
+      // Programa v2: responsable, cuadrillas asignadas (JSON), avisar a los asignados y visibilidad en la página pública.
+      `ALTER TABLE itinerary_items ADD COLUMN owner TEXT`,
+      `ALTER TABLE itinerary_items ADD COLUMN teams TEXT NOT NULL DEFAULT '["todos"]'`,
+      `ALTER TABLE itinerary_items ADD COLUMN notify INTEGER NOT NULL DEFAULT 1`,
+      `ALTER TABLE itinerary_items ADD COLUMN visible INTEGER NOT NULL DEFAULT 1`,
+      // Lugares configurables por misión (los que se eligen al crear o editar una actividad).
+      `CREATE TABLE IF NOT EXISTS mission_places (
+        id TEXT PRIMARY KEY,
+        mission_id TEXT NOT NULL REFERENCES missions(id),
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'otro',
+        position INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS mission_places_mission_idx ON mission_places (mission_id, position)`,
+      // Los lugares ya escritos en el programa pasan a la lista de lugares de su misión.
+      `INSERT INTO mission_places (id, mission_id, name, type, position, created_by)
+        SELECT lower(hex(randomblob(16))), mission_id, place, 'otro', 0, 'sistema'
+        FROM (SELECT DISTINCT mission_id, trim(place) AS place FROM itinerary_items WHERE place IS NOT NULL AND trim(place) <> '')`,
+    ],
+  },
 ];

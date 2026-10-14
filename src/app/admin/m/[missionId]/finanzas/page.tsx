@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PageBody, PageHeader } from "@/components/admin-shell";
+import { Modal } from "@/components/modal";
 import { requireUser } from "@/lib/auth";
 import { FINANCE_CATEGORIES, WISH_CATEGORIES, labelOf, type ExpenseStatus } from "@/lib/catalogs";
 import { getMissionById, listOrganizations } from "@/lib/data";
@@ -10,7 +11,7 @@ import { canManageFinance, canViewFinance } from "@/lib/permissions";
 import { listAssignableUsers } from "@/lib/users";
 import { cycleExpenseStatusAction, deleteEntryAction, deleteWishItemAction, moveWishItemAction, returnWishItemAction, toggleIncomeStatusAction } from "./actions";
 import { FilterChip, Money, Pill } from "./finance-bits";
-import { BuyForm, ExpenseForm, FundsPanel, IncomeForm, Modal, ReimburseForm, TransferForm, WishForm, type FundOption, type VolunteerOption } from "./modals";
+import { BuyForm, ExpenseForm, FundsPanel, IncomeForm, ReimburseForm, TransferForm, WishForm, type FundOption, type VolunteerOption } from "./modals";
 
 export const metadata = { title: "Finanzas" };
 

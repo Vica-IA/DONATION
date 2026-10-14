@@ -103,6 +103,39 @@ export function areaInfo(value: string | null | undefined): AreaInfo | typeof GE
   return AREAS.find((a) => a.value === value) ?? GENERAL_AREA;
 }
 
+/** Tipos de lugar de la misión (lista configurable desde Programa). */
+export const PLACE_TYPES = [
+  { value: "obra", label: "Obra" },
+  { value: "alojamiento", label: "Alojamiento" },
+  { value: "familia", label: "Familia" },
+  { value: "comunidad", label: "Comunidad" },
+  { value: "proveedor", label: "Proveedor" },
+  { value: "traslado", label: "Traslado" },
+  { value: "otro", label: "Otro" },
+] as const satisfies readonly Option[];
+export type PlaceType = (typeof PLACE_TYPES)[number]["value"];
+
+/** Grupos fijos a los que se asigna una actividad; las cuadrillas se suman por su id. */
+export const TEAM_ALL = "todos";
+export const TEAM_COORD = "coordinadores";
+export const TEAM_GROUPS = [
+  { value: TEAM_ALL, label: "Todos", sub: "Toda la misión" },
+  { value: TEAM_COORD, label: "Coordinadores", sub: "Dirección y áreas" },
+] as const;
+
+/** Cuadrillas asignadas guardadas como JSON; ante cualquier dato raro, "todos". */
+export function parseTeams(raw: string | null | undefined): string[] {
+  if (!raw) return [TEAM_ALL];
+  try {
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [TEAM_ALL];
+    const clean = [...new Set(list.filter((v): v is string => typeof v === "string" && v.length > 0 && v.length <= 64))];
+    return clean.length === 0 || clean.includes(TEAM_ALL) ? [TEAM_ALL] : clean;
+  } catch {
+    return [TEAM_ALL];
+  }
+}
+
 export function isArea(value: string): value is Area {
   return AREAS.some((a) => a.value === value);
 }

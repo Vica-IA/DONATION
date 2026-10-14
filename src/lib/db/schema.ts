@@ -339,13 +339,34 @@ export const itineraryItems = sqliteTable(
     startTime: text("start_time").notNull(), // HH:MM
     endTime: text("end_time"), // HH:MM
     title: text("title").notNull(),
-    place: text("place"),
+    place: text("place"), // nombre de un lugar de mission_places (texto libre si ya no existe)
     area: text("area"), // AREAS | 'general' | null
-    notes: text("notes"),
+    owner: text("owner"), // responsable (nombre): coordinador del área o líder de cuadrilla
+    teams: text("teams").notNull().default('["todos"]'), // JSON: ['todos'] | ['coordinadores', <squadId>, ...]
+    notes: text("notes"), // indicaciones para los asignados
+    notify: integer("notify", { mode: "boolean" }).notNull().default(true), // avisar a los asignados al guardar
+    visible: integer("visible", { mode: "boolean" }).notNull().default(true), // se muestra en la página pública
     createdBy: text("created_by"),
     ...timestamps,
   },
   (t) => [index("itinerary_mission_idx").on(t.missionId, t.day, t.startTime)],
+);
+
+/** Lugares de la misión: opciones al crear o editar actividades del programa. */
+export const missionPlaces = sqliteTable(
+  "mission_places",
+  {
+    id: text("id").primaryKey(),
+    missionId: text("mission_id")
+      .notNull()
+      .references(() => missions.id),
+    name: text("name").notNull(),
+    type: text("type").notNull().default("otro"), // PLACE_TYPES
+    position: integer("position").notNull().default(0),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("mission_places_mission_idx").on(t.missionId, t.position)],
 );
 
 /** Avisos de la coordinación durante la misión (página pública). */
@@ -409,5 +430,6 @@ export type User = typeof users.$inferSelect;
 export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type ItineraryItem = typeof itineraryItems.$inferSelect;
+export type MissionPlace = typeof missionPlaces.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type Squad = typeof squads.$inferSelect;

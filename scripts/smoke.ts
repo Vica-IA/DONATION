@@ -557,35 +557,95 @@ async function main() {
   // ---------- En la misión: programa, avisos y cuadrillas ----------
   await page.goto(`${base}/programa`);
   let prog = await body(page);
-  assert.match(prog, /Programa de la misión/);
+  assert.match(prog, /Programa de campo/);
   assert.match(prog, /0 actividades/);
-  await page.getByRole("button", { name: "Agregar al programa" }).click();
-  await page.getByText("Escribe la actividad").waitFor();
-  await page.selectOption("#day", "2026-10-10");
+  // lugares configurables de la misión
+  await page.getByRole("link", { name: "Configurar lugares" }).click();
+  await page.locator("[data-places]").waitFor();
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByText("Escribe el nombre del lugar").waitFor();
+  await page.fill("#placeName", "Comedor de la escuela");
+  await page.selectOption("#placeType", "comunidad");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await flash(/Lugar agregado: Comedor de la escuela/);
+  assert.equal(await page.locator('[data-place="Comedor de la escuela"]').count(), 1);
+  assert.match(await page.locator('[data-place="Comedor de la escuela"]').innerText(), /Comunidad · 0 actividades/);
+  // nueva actividad desde el editor lateral
+  await page.goto(`${base}/programa?dia=2026-10-10&editar=nueva`);
+  await page.locator("[data-editor]").waitFor();
+  await page.getByRole("button", { name: "Crear actividad" }).click();
+  await page.getByText("Escribe un nombre para la actividad").waitFor();
+  await page.fill("#title", "Desayuno y oración de la mañana");
   await page.fill("#startTime", "07:00");
   await page.fill("#endTime", "08:00");
-  await page.fill("#title", "Desayuno y oración de la mañana");
-  await page.fill("#place", "Comedor de la escuela");
-  await page.selectOption("#area", "logistica");
-  await page.getByRole("button", { name: "Agregar al programa" }).click();
-  await page.getByText("Actividad agregada al programa.").waitFor();
-  await page.goto(`${base}/programa?dia=2026-10-10`);
+  await page.locator("[data-editor]").getByRole("button", { name: "Logística" }).click();
+  await page.selectOption("#place", "Comedor de la escuela");
+  await page.locator('[data-team="Coordinadores"]').click(); // quita "Todos"
+  assert.match(await page.locator("[data-headcount]").innerText(), /≈ \d+ personas/);
+  await page.getByRole("button", { name: "Crear actividad" }).click();
+  await flash(/Actividad creada\./);
+  assert.ok((await page.getByRole("link", { name: "Avisar por WhatsApp" }).count()) > 0); // avisar a los asignados
+  assert.match(page.url(), /dia=2026-10-10/);
   assert.equal(await page.locator('[data-item-title="Desayuno y oración de la mañana"]').count(), 1);
-  prog = await body(page);
-  assert.match(prog, /7:00 a\. m\. – 8:00 a\. m\./);
-  assert.match(prog, /1 actividades/);
+  prog = await page.locator('[data-item-title="Desayuno y oración de la mañana"]').innerText();
+  assert.match(prog, /7:00 a\. m\./);
+  assert.match(prog, /8:00 a\. m\./);
+  assert.match(prog, /Comedor de la escuela/);
+  assert.match(prog, /Coordinadores/);
+  assert.doesNotMatch(prog, /Todos/);
+  assert.match(await body(page), /1 actividades/);
+  await page.goto(`${base}/programa?dia=2026-10-10&area=transporte`);
+  assert.equal(await page.locator('[data-item-title="Desayuno y oración de la mañana"]').count(), 0);
+  assert.match(await body(page), /Sin actividades este día para esta área/);
   await page.goto(`${base}/programa?dia=2026-10-09`);
   assert.equal(await page.locator('[data-item-title="Desayuno y oración de la mañana"]').count(), 0);
-  // editar y volver
+  // editar desde la fila
   await page.goto(`${base}/programa?dia=2026-10-10`);
   await page.getByRole("link", { name: "Desayuno y oración de la mañana" }).click();
-  await page.waitForURL("**/programa/**");
+  await page.locator("[data-editor]").waitFor();
   await page.fill("#title", "Desayuno, oración y devocional");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await page.getByText("Cambios guardados.").waitFor();
-  await page.goto(`${base}/programa?dia=2026-10-10`);
+  await flash(/Cambios guardados\./);
   assert.equal(await page.locator('[data-item-title="Desayuno, oración y devocional"]').count(), 1);
-  console.log("✓ programa: actividad creada por día, editada y listada");
+  // duplicar: la copia abre en el editor y avisa el cruce (mismo lugar y hora); eliminarla
+  await page.getByRole("link", { name: "Desayuno, oración y devocional" }).click();
+  await page.locator("[data-editor]").waitFor();
+  await page.getByRole("button", { name: "Duplicar" }).click();
+  await flash(/Actividad duplicada/);
+  await page.locator("[data-editor]").waitFor();
+  assert.equal(await page.inputValue("#title"), "Desayuno, oración y devocional (copia)");
+  assert.match(await page.locator("[data-conflicts]").innerText(), /Posible cruce de horario[\s\S]*mismo lugar \(Comedor de la escuela\)/);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Eliminar" }).click();
+  await flash(/Actividad eliminada\./);
+  assert.equal(await page.locator('[data-item-title="Desayuno, oración y devocional (copia)"]').count(), 0);
+  assert.equal(await page.locator('[data-item-title="Desayuno, oración y devocional"]').count(), 1);
+  // un lugar en uso no se quita; uno libre sí
+  await page.goto(`${base}/programa?dia=2026-10-10&lugares=1`);
+  await page.locator("[data-places]").waitFor();
+  assert.match(await page.locator('[data-place="Comedor de la escuela"]').innerText(), /1 actividad[\s\S]*En uso/);
+  assert.equal(await page.locator('[data-place="Comedor de la escuela"] button').count(), 0);
+  await page.fill("#placeName", "Cancha");
+  await page.selectOption("#placeType", "obra");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await flash(/Lugar agregado: Cancha/);
+  await page.locator('[data-place="Cancha"]').getByRole("button", { name: "Quitar" }).click();
+  await flash(/Lugar quitado: Cancha/);
+  assert.equal(await page.locator('[data-place="Cancha"]').count(), 0);
+  // actividad interna: sin aviso y oculta en la página pública
+  await page.goto(`${base}/programa?dia=2026-10-11&editar=nueva`);
+  await page.locator("[data-editor]").waitFor();
+  await page.fill("#title", "Reunión de coordinación");
+  await page.fill("#startTime", "21:00");
+  await page.fill("#endTime", "");
+  await page.getByText("Avisar a los asignados").click();
+  await page.getByText("Mostrar en la página pública").click();
+  await page.getByRole("button", { name: "Crear actividad" }).click();
+  await flash(/Actividad creada\./);
+  assert.equal(await page.getByRole("link", { name: "Avisar por WhatsApp" }).count(), 0);
+  assert.match(await page.locator('[data-item-title="Reunión de coordinación"]').innerText(), /Oculta/i);
+  assert.match(await body(page), /2 actividades · 1 ocultas al público/);
+  console.log("✓ programa: lugares, editor lateral, filtro por área, duplicar con aviso de cruce, eliminar y actividad oculta");
 
   await page.goto(`${base}/avisos`);
   await page.getByRole("button", { name: "Publicar aviso" }).click();
@@ -673,6 +733,8 @@ async function main() {
   await page.goto(`${BASE}/misiones/${SLUG}?dia=2026-10-09`);
   pub = await body(page);
   assert.match(pub, /El programa de este día se publicará pronto/);
+  await page.goto(`${BASE}/misiones/${SLUG}?dia=2026-10-11`);
+  assert.doesNotMatch(await body(page), /Reunión de coordinación/); // oculta al público
   // El bloque superior depende de la fecha real: antes de la misión anuncia la primera actividad (sin importar el día elegido);
   // durante, el día de misión; después, el cierre.
   const hoyBogota = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -880,8 +942,10 @@ async function main() {
   await page.goto(`${base}/finanzas`);
   await page.waitForURL(/\/admin\/m\/[^/?]+\?denegado=1$/);
   assert.equal(await page.getByRole("link", { name: "Programa" }).count(), 0);
-  await page.goto(`${base}/programa?dia=2026-10-10`);
-  assert.equal(await page.getByRole("button", { name: "Agregar al programa" }).count(), 0);
+  await page.goto(`${base}/programa?dia=2026-10-10&editar=nueva`);
+  assert.equal(await page.getByRole("link", { name: "+ Nueva actividad" }).count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Configurar lugares" }).count(), 0);
+  assert.equal(await page.locator("[data-editor]").count(), 0);
   assert.match(await body(page), /Desayuno, oración y devocional/); // sí lo consulta
   await page.goto(`${base}/avisos`);
   assert.equal(await page.getByRole("button", { name: "Publicar aviso" }).count(), 0);

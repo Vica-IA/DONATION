@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { Seg } from "@/components/seg";
 import { Field } from "@/components/ui";
 import { BUDGET_KINDS, EXPENSE_STATUS, FINANCE_CATEGORIES, FUND_TYPES, INCOME_SOURCES, INCOME_STATUS, PAY_KINDS, WISH_CATEGORIES, expenseSubtypes, isFixedExpenseCategory, type BudgetKind, type ExpenseStatus, type IncomeSource, type IncomeStatus, type PayKind } from "@/lib/catalogs";
 import { formatCOP } from "@/lib/format";
@@ -16,27 +17,6 @@ function useFormBits(state: ModalState) {
   const str = (key: string, fallback = "") => (typeof state.values[key] === "string" ? (state.values[key] as string) : fallback);
   const cls = (key: string) => `input${state.errors[key] ? " input-error" : ""}`;
   return { str, cls };
-}
-
-/** Ventana centrada (en móvil, hoja inferior). El fondo y "Cerrar" vuelven a la vista sin el modal. */
-export function Modal({ kicker, title, closeHref, children }: { kicker: string; title: string; closeHref: string; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
-      <Link href={closeHref} className="absolute inset-0 bg-ink/40" aria-label="Cerrar" />
-      <div className="relative flex max-h-[92vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[20px] bg-white shadow-[0_30px_80px_-20px_rgba(16,35,29,.5)] sm:rounded-[20px]">
-        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-brand-600">{kicker}</span>
-            <span className="text-[22px] font-extrabold tracking-[-0.02em]">{title}</span>
-          </div>
-          <Link href={closeHref} className="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-muted hover:bg-line-soft">
-            Cerrar
-          </Link>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
 }
 
 function Body({ children }: { children: React.ReactNode }) {
@@ -58,31 +38,6 @@ function Footer({ closeHref, pending, label }: { closeHref: string; pending: boo
 
 function FormError({ state }: { state: ModalState }) {
   return state.errors._form ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{state.errors._form}</div> : null;
-}
-
-/** Control segmentado. Los radios no son controlados: React restablece el formulario al terminar la acción. */
-function Seg<T extends string>({ name, options, initial, onChange, cols }: { name: string; options: readonly { value: T; label: string }[]; initial: T; onChange?: (v: T) => void; cols?: number }) {
-  const [value, setValue] = useState<T>(initial);
-  return (
-    <div className="grid gap-1 rounded-xl bg-[#e9e7df] p-1" style={{ gridTemplateColumns: `repeat(${cols ?? options.length}, minmax(0,1fr))` }}>
-      {options.map((o) => (
-        <label key={o.value} className={`cursor-pointer rounded-[9px] px-1 py-2 text-center text-[13px] font-semibold ${value === o.value ? "bg-white text-ink shadow-[0_1px_3px_rgba(16,35,29,.15)]" : "text-muted"}`}>
-          <input
-            type="radio"
-            name={name}
-            value={o.value}
-            defaultChecked={initial === o.value}
-            onChange={() => {
-              setValue(o.value);
-              onChange?.(o.value);
-            }}
-            className="sr-only"
-          />
-          {o.label}
-        </label>
-      ))}
-    </div>
-  );
 }
 
 function FundSelect({ id, name, funds, defaultValue, className, label }: { id: string; name: string; funds: FundOption[]; defaultValue: string; className: string; label?: boolean }) {

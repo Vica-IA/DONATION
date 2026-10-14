@@ -1,11 +1,12 @@
 import "server-only";
-import { and, asc, count, desc, eq, inArray, isNotNull, notInArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { log } from "./data";
 import { getDb } from "./db";
-import { announcements, itineraryItems, missionRegistrations, organizations, squads, volunteers, type Announcement, type ItineraryItem, type Squad } from "./db/schema";
+import { announcements, itineraryItems, missionPlaces, missionRegistrations, organizations, squads, volunteers, type Announcement, type ItineraryItem, type MissionPlace, type Squad } from "./db/schema";
 import { nowIso } from "./format";
 import { addDays } from "./mission-timeline";
-import type { AnnouncementInput, ItineraryInput, SquadInput } from "./validation";
+import { addMinutes } from "./program-shared";
+import type { AnnouncementInput, ItineraryInput, PlaceInput, SquadInput } from "./validation";
 
 // ---------- Programa ----------
 
@@ -35,10 +36,26 @@ export async function getItineraryItem(id: string): Promise<ItineraryItem | null
   return (await db.select().from(itineraryItems).where(eq(itineraryItems.id, id)).limit(1))[0] ?? null;
 }
 
+function itineraryValues(input: ItineraryInput) {
+  return {
+    day: input.day,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    title: input.title,
+    place: input.place,
+    area: input.area,
+    owner: input.owner,
+    teams: JSON.stringify(input.teams),
+    notes: input.notes,
+    notify: input.notify,
+    visible: input.visible,
+  };
+}
+
 export async function createItineraryItem(missionId: string, input: ItineraryInput, actor: string): Promise<ItineraryItem> {
   const db = await getDb();
   const id = crypto.randomUUID();
-  await db.insert(itineraryItems).values({ id, missionId, ...input, createdBy: actor });
+  await db.insert(itineraryItems).values({ id, missionId, ...itineraryValues(input), createdBy: actor });
   await log("program", id, "actividad_creada", `${input.day} ${input.startTime} · ${input.title}`, actor);
   return (await getItineraryItem(id))!;
 }
@@ -47,9 +64,36 @@ export async function updateItineraryItem(id: string, input: ItineraryInput, act
   const db = await getDb();
   await db
     .update(itineraryItems)
-    .set({ ...input, updatedAt: nowIso() })
+    .set({ ...itineraryValues(input), updatedAt: nowIso() })
     .where(eq(itineraryItems.id, id));
   await log("program", id, "actividad_actualizada", `${input.day} ${input.startTime} · ${input.title}`, actor);
+}
+
+/** Copia una actividad con el mismo día, hora, lugar, responsable y cuadrillas; el título lleva "(copia)". */
+export async function duplicateItineraryItem(id: string, actor: string): Promise<ItineraryItem | null> {
+  const db = await getDb();
+  const current = await getItineraryItem(id);
+  if (!current) return null;
+  const copyId = crypto.randomUUID();
+  const title = `${current.title} (copia)`.slice(0, 160);
+  await db.insert(itineraryItems).values({
+    id: copyId,
+    missionId: current.missionId,
+    day: current.day,
+    startTime: current.startTime,
+    endTime: current.endTime,
+    title,
+    place: current.place,
+    area: current.area,
+    owner: current.owner,
+    teams: current.teams,
+    notes: current.notes,
+    notify: current.notify,
+    visible: current.visible,
+    createdBy: actor,
+  });
+  await log("program", copyId, "actividad_duplicada", `${current.day} ${current.startTime} · ${title}`, actor);
+  return getItineraryItem(copyId);
 }
 
 export async function deleteItineraryItem(id: string, actor: string): Promise<void> {
@@ -58,6 +102,55 @@ export async function deleteItineraryItem(id: string, actor: string): Promise<vo
   if (!current) return;
   await db.delete(itineraryItems).where(eq(itineraryItems.id, id));
   await log("program", id, "actividad_eliminada", `${current.day} ${current.startTime} · ${current.title}`, actor);
+}
+
+// ---------- Lugares ----------
+
+export async function listPlaces(missionId: string): Promise<MissionPlace[]> {
+  const db = await getDb();
+  return db.select().from(missionPlaces).where(eq(missionPlaces.missionId, missionId)).orderBy(asc(missionPlaces.position), asc(missionPlaces.name));
+}
+
+export async function getPlace(id: string): Promise<MissionPlace | null> {
+  const db = await getDb();
+  return (await db.select().from(missionPlaces).where(eq(missionPlaces.id, id)).limit(1))[0] ?? null;
+}
+
+/** Crea un lugar; si ya existe uno con el mismo nombre (sin distinguir mayúsculas), devuelve ese. */
+export async function createPlace(missionId: string, input: PlaceInput, actor: string): Promise<MissionPlace> {
+  const db = await getDb();
+  const existing = (await listPlaces(missionId)).find((p) => p.name.localeCompare(input.name, "es", { sensitivity: "base" }) === 0);
+  if (existing) return existing;
+  const [{ max }] = await db.select({ max: sql<number | null>`max(${missionPlaces.position})` }).from(missionPlaces).where(eq(missionPlaces.missionId, missionId));
+  const id = crypto.randomUUID();
+  await db.insert(missionPlaces).values({ id, missionId, name: input.name, type: input.type, position: (max ?? -1) + 1, createdBy: actor });
+  await log("program", id, "lugar_creado", `${input.name} · ${input.type}`, actor);
+  return (await getPlace(id))!;
+}
+
+/** Actividades que usan cada lugar (por nombre), para bloquear su eliminación. */
+export async function placeUses(missionId: string): Promise<Map<string, number>> {
+  const db = await getDb();
+  const rows = await db
+    .select({ place: itineraryItems.place, n: count() })
+    .from(itineraryItems)
+    .where(and(eq(itineraryItems.missionId, missionId), isNotNull(itineraryItems.place)))
+    .groupBy(itineraryItems.place);
+  const map = new Map<string, number>();
+  for (const r of rows) if (r.place) map.set(r.place, r.n);
+  return map;
+}
+
+/** Quita un lugar que ninguna actividad usa. Devuelve false si está en uso. */
+export async function deletePlace(id: string, actor: string): Promise<boolean> {
+  const db = await getDb();
+  const current = await getPlace(id);
+  if (!current) return true;
+  const uses = (await placeUses(current.missionId)).get(current.name) ?? 0;
+  if (uses > 0) return false;
+  await db.delete(missionPlaces).where(eq(missionPlaces.id, id));
+  await log("program", id, "lugar_eliminado", current.name, actor);
+  return true;
 }
 
 // ---------- Avisos ----------
@@ -236,12 +329,6 @@ export function missionDays(mission: { startDate: string; endDate: string }): st
     d = addDays(d, 1);
   }
   return days;
-}
-
-function addMinutes(hhmm: string, minutes: number): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const total = Math.min(23 * 60 + 59, h * 60 + m + minutes);
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 /** Actividad en curso (sin hora fin: 90 minutos) y la siguiente, a partir de la fecha y hora actuales. */

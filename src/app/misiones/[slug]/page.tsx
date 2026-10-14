@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicFooter, PublicHeader } from "@/components/brand";
 import { MissionCover, MissionLogo } from "@/components/mission-brand";
-import { AREAS, areaInfo } from "@/lib/catalogs";
+import { AREAS, TEAM_ALL, TEAM_COORD, areaInfo, parseTeams } from "@/lib/catalogs";
 import { getMissionBySlug } from "@/lib/data";
 import { formatCOP, formatDateRange, formatDateTime, formatTime, formatWeekday, shortName } from "@/lib/format";
 import { missionTimeline, nowBogotaTime } from "@/lib/mission-timeline";
@@ -26,7 +26,10 @@ export default async function MissionPublicPage({ params, searchParams }: Props)
   const { dia } = await searchParams;
   const mission = await getMissionBySlug(slug);
   if (!mission) notFound();
-  const [items, avisos, squads, coordinators] = await Promise.all([listItinerary(mission.id), listAnnouncements(mission.id), listSquads(mission.id), listCoordinators()]);
+  const [allItems, avisos, squads, coordinators] = await Promise.all([listItinerary(mission.id), listAnnouncements(mission.id), listSquads(mission.id), listCoordinators()]);
+  // Solo las actividades marcadas como visibles; las demás son de coordinación interna.
+  const items = allItems.filter((i) => i.visible);
+  const teamLabel = new Map<string, string>([[TEAM_ALL, "Todos"], [TEAM_COORD, "Coordinadores"], ...squads.map((s) => [s.id, s.name] as [string, string])]);
   const timeline = missionTimeline(mission);
   const now = nowBogotaTime();
   const days = missionDays(mission);
@@ -157,6 +160,18 @@ export default async function MissionPublicPage({ params, searchParams }: Props)
                       {live ? <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">Ahora</span> : null}
                     </span>
                     <span className="text-xs text-muted">{[it.place, it.notes].filter(Boolean).join(" · ")}</span>
+                    {(() => {
+                      const teams = parseTeams(it.teams);
+                      return teams.includes(TEAM_ALL) ? null : (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {teams.map((t) => teamLabel.get(t)).filter(Boolean).map((t) => (
+                            <span key={t} className="rounded-md bg-line-soft px-1.5 py-0.5 text-[11px] font-semibold text-ink-soft">
+                              {t}
+                            </span>
+                          ))}
+                        </span>
+                      );
+                    })()}
                   </div>
                   {a ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: a.color }}>

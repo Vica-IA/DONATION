@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AREAS, ATTENDANCE, BLOOD_TYPES, BUDGET_KINDS, DOC_TYPES, EXPENSE_STATUS, FINANCE_CATEGORIES, FUND_TYPES, INCOME_SOURCES, INCOME_STATUS, MISSION_STATUS, PAYMENT_STATUS, PAY_KINDS, REGISTRATION_STATUS, ROLES, SKILLS, TASK_STATUS, USER_ROLES, WISH_CATEGORIES, values } from "./catalogs";
+import { AREAS, ATTENDANCE, BLOOD_TYPES, BUDGET_KINDS, DOC_TYPES, EXPENSE_STATUS, FINANCE_CATEGORIES, FUND_TYPES, INCOME_SOURCES, INCOME_STATUS, MISSION_STATUS, PAYMENT_STATUS, PAY_KINDS, PLACE_TYPES, REGISTRATION_STATUS, ROLES, SKILLS, TASK_STATUS, TEAM_ALL, USER_ROLES, WISH_CATEGORIES, values } from "./catalogs";
 
 export const PASSWORD_MIN_LENGTH = 8;
 
@@ -225,6 +225,12 @@ const copAmount = z.preprocess(
     .max(100_000_000_000, "Valor demasiado alto"),
 );
 
+/** Casilla de verificación de un formulario: "on" (o "true") → true; ausente o vacía → false. */
+const checkbox = z
+  .union([z.literal("on"), z.literal("true"), z.literal("")])
+  .optional()
+  .transform((v) => v === "on" || v === "true");
+
 const optionalDate = z
   .union([isoDate, z.literal("")])
   .optional()
@@ -244,10 +250,7 @@ export const incomeSchema = z
     fundId: optionalId,
     registeredBy: trimmed(80).optional().default(""),
     note: optionalText(300),
-    inKind: z
-      .union([z.literal("on"), z.literal("true"), z.literal("")])
-      .optional()
-      .transform((v) => v === "on" || v === "true"),
+    inKind: checkbox,
   })
   .refine((d) => d.source !== "voluntario" || Boolean(d.registrationId), { message: "Elige a la persona", path: ["registrationId"] })
   .refine((d) => d.source === "voluntario" || d.who.trim().length >= 2, { message: "Indica quién aporta", path: ["who"] })
@@ -336,19 +339,39 @@ const areaOrGeneral = z
   .transform((v) => (v === undefined || v === "" ? null : v));
 
 /** Actividad del programa de la misión. */
-export const itinerarySchema = z.object({
-  day: isoDate,
-  startTime: hhmm,
-  endTime: z
-    .union([hhmm, z.literal("")])
-    .optional()
-    .transform((v) => (v === undefined || v === "" ? null : v)),
-  title: trimmed(160).min(3, "Escribe la actividad"),
-  place: optionalText(160),
-  area: areaOrGeneral,
-  notes: optionalText(600),
-});
+export const itinerarySchema = z
+  .object({
+    day: isoDate,
+    startTime: hhmm,
+    endTime: z
+      .union([hhmm, z.literal("")])
+      .optional()
+      .transform((v) => (v === undefined || v === "" ? null : v)),
+    title: trimmed(160).min(3, "Escribe un nombre para la actividad"),
+    place: optionalText(160),
+    area: areaOrGeneral,
+    owner: optionalText(120),
+    teams: z
+      .array(z.string().trim().min(1).max(64))
+      .optional()
+      .default([])
+      .transform((list) => {
+        const clean = [...new Set(list)];
+        return clean.length === 0 || clean.includes(TEAM_ALL) ? [TEAM_ALL] : clean;
+      }),
+    notes: optionalText(600),
+    notify: checkbox,
+    visible: checkbox,
+  })
+  .refine((d) => !d.endTime || d.endTime > d.startTime, { message: "La hora de fin debe ser posterior al inicio", path: ["endTime"] });
 export type ItineraryInput = z.infer<typeof itinerarySchema>;
+
+/** Lugar de la misión (lista configurable desde Programa). */
+export const placeSchema = z.object({
+  name: trimmed(120).min(2, "Escribe el nombre del lugar"),
+  type: z.enum(values(PLACE_TYPES), { message: "Elige un tipo" }).default("otro"),
+});
+export type PlaceInput = z.infer<typeof placeSchema>;
 
 /** Aviso de la coordinación. */
 export const announcementSchema = z.object({

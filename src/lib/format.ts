@@ -74,6 +74,20 @@ export function formatWeekday(iso: string): string {
   return WEEKDAY_FMT.format(new Date(`${iso}T00:00:00Z`)).replace(".", "");
 }
 
+const DAY_SHORT_FMT = new Intl.DateTimeFormat("es-CO", { weekday: "short", day: "numeric", timeZone: "UTC" });
+
+/** Día con inicial mayúscula: "2026-10-10" → "Sábado, 10 de oct". */
+export function formatWeekdayCap(iso: string): string {
+  const s = formatWeekday(iso);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Día corto para pestañas estrechas: "2026-10-10" → "Sáb 10". */
+export function formatDayShort(iso: string): string {
+  const s = DAY_SHORT_FMT.format(new Date(`${iso}T00:00:00Z`)).replace(/[.,]/g, "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 /** Nombre corto para páginas públicas: "Juan Pérez Gómez" → "Juan P." */
 export function shortName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
