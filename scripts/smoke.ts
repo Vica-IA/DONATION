@@ -631,7 +631,12 @@ async function main() {
   await page.goto(`${BASE}/misiones/${SLUG}?dia=2026-10-09`);
   pub = await body(page);
   assert.match(pub, /El programa de este día se publicará pronto/);
-  assert.match(pub, /Primera actividad:\s*Desayuno, oración y devocional · sábado, 10 de oct, 7:00 a\. m\./i); // antes de la misión, el bloque superior anuncia la primera actividad sin importar el día elegido
+  // El bloque superior depende de la fecha real: antes de la misión anuncia la primera actividad (sin importar el día elegido);
+  // durante, el día de misión; después, el cierre.
+  const hoyBogota = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  if (hoyBogota < "2026-10-09") assert.match(pub, /Primera actividad:\s*Desayuno, oración y devocional · sábado, 10 de oct, 7:00 a\. m\./i);
+  else if (hoyBogota > "2026-10-12") assert.match(pub, /Misión finalizada/);
+  else assert.match(pub, /Día \d de 4/);
   // desde el inicio y desde la confirmación se llega a la página pública
   await page.goto(`${BASE}/`);
   await page.getByRole("link", { name: "Ver la misión" }).first().click();

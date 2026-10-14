@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
 import { requireUser } from "@/lib/auth";
 import { getMissionById, getMissionStats } from "@/lib/data";
+import { countAnnouncements, countItinerary } from "@/lib/program";
 import { countOpenTasks } from "@/lib/tasks";
 import { listCoordinators } from "@/lib/users";
 
@@ -11,9 +12,15 @@ export default async function MissionLayout({ children, params }: { children: Re
   const user = await requireUser(`/admin/m/${missionId}`);
   const mission = await getMissionById(missionId);
   if (!mission) notFound();
-  const [stats, openTasks, coordinators] = await Promise.all([getMissionStats(mission), countOpenTasks(mission.id), listCoordinators()]);
+  const [stats, openTasks, activities, announcements, coordinators] = await Promise.all([
+    getMissionStats(mission),
+    countOpenTasks(mission.id),
+    countItinerary(mission.id),
+    countAnnouncements(mission.id),
+    listCoordinators(),
+  ]);
   return (
-    <AdminShell user={user} mission={mission} counts={{ volunteers: stats.byStatus.confirmado, openTasks }} coordinators={coordinators}>
+    <AdminShell user={user} mission={mission} counts={{ volunteers: stats.byStatus.confirmado, openTasks, activities, announcements }} coordinators={coordinators}>
       {children}
     </AdminShell>
   );

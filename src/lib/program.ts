@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, notInArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, notInArray } from "drizzle-orm";
 import { log } from "./data";
 import { getDb } from "./db";
 import { announcements, itineraryItems, missionRegistrations, organizations, squads, volunteers, type Announcement, type ItineraryItem, type Squad } from "./db/schema";
@@ -16,6 +16,18 @@ export async function listItinerary(missionId: string): Promise<ItineraryItem[]>
     .from(itineraryItems)
     .where(eq(itineraryItems.missionId, missionId))
     .orderBy(asc(itineraryItems.day), asc(itineraryItems.startTime), asc(itineraryItems.title));
+}
+
+export async function countItinerary(missionId: string): Promise<number> {
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: count() }).from(itineraryItems).where(eq(itineraryItems.missionId, missionId));
+  return n;
+}
+
+export async function countAnnouncements(missionId: string): Promise<number> {
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: count() }).from(announcements).where(eq(announcements.missionId, missionId));
+  return n;
 }
 
 export async function getItineraryItem(id: string): Promise<ItineraryItem | null> {

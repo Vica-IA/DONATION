@@ -45,6 +45,7 @@
 | 2026-10-07 | Descargar CSV en Voluntarios y Finanzas respeta los filtros aplicados en la vista (el archivo se llama …-filtrado-…). |
 | 2026-10-07 | Finanzas → Donaciones: registro de donaciones recibidas o prometidas, en dinero o en especie (valor estimado), con resumen, lista y CSV; entran como ingresos de la misión. |
 | 2026-10-07 | Finanzas muestra el "Plan de la misión" como lo lleva Financiero (ingresos estimados − gastos fijos = saldo para materiales y actividades) y carga una sola vez el plan inicial de la misión Chocó (donaciones estimadas, transporte, alimentación, materiales, tienda y actividades). |
+| 2026-10-09 | Panel según el prototipo v2 "Misión Chocó · Coordinación" (fase 1): barra lateral por grupos (Misión, Recursos y comunicación, Coordinadores, Equipo) con conteos; en móvil, cabecera con logo y botón Menú, cajón lateral y barra de pestañas al pie; página "Página pública" con vista previa en marco de teléfono. |
 
 ## Puntos por resolver entre documentos
 

@@ -1,6 +1,7 @@
-import { AdminShell } from "@/components/admin-shell";
+import { AdminShell, type ShellCounts } from "@/components/admin-shell";
 import { requireUser } from "@/lib/auth";
 import { getActiveMission, getMissionStats } from "@/lib/data";
+import { countAnnouncements, countItinerary } from "@/lib/program";
 import { countOpenTasks } from "@/lib/tasks";
 import { listCoordinators } from "@/lib/users";
 
@@ -9,7 +10,11 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   const user = await requireUser("/admin", { allowPendingPassword: true });
   const mission = await getActiveMission();
   const [counts, coordinators] = await Promise.all([
-    mission ? Promise.all([getMissionStats(mission), countOpenTasks(mission.id)]).then(([s, t]) => ({ volunteers: s.byStatus.confirmado, openTasks: t })) : null,
+    mission
+      ? Promise.all([getMissionStats(mission), countOpenTasks(mission.id), countItinerary(mission.id), countAnnouncements(mission.id)]).then(
+          ([s, t, a, av]): ShellCounts => ({ volunteers: s.byStatus.confirmado, openTasks: t, activities: a, announcements: av }),
+        )
+      : null,
     listCoordinators(),
   ]);
   return (

@@ -88,12 +88,6 @@ export default async function MissionOverview({ params, searchParams }: Props) {
       <PageHeader
         kicker={mission.name}
         title="Centro de misión"
-        badge={
-          <span className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-3 py-1.5 text-[13px] font-semibold text-paper">
-            <span className="h-[7px] w-[7px] rounded-full bg-accent-500" />
-            {timeline.badge}
-          </span>
-        }
         actions={can(user.role, "missions.manage") ? <Link href={`${base}/editar`} className="btn-secondary">Editar misión</Link> : null}
       />
       <PageBody>
